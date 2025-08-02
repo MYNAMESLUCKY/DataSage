@@ -143,9 +143,9 @@ class DataIngestionService:
             if extracted and len(extracted.strip()) > 50:
                 return extracted
             
-            # Special handling for news sites with JavaScript content
+            # For complex news sites, log the issue for debugging
             if 'news.google.com' in url or 'google.com/news' in url:
-                return self._extract_google_news_content(response.text, url)
+                logger.warning(f"Google News content extraction requires special handling: {url}")
             
             return ""
             

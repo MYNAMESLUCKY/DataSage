@@ -54,8 +54,17 @@ class DataSourceManager:
                 'type': 'web',
                 'description': 'Data science and ML articles on Medium',
                 'category': 'Community'
+            },
+            {
+                
+            
+            'name': 'CNN NEWS',
+                'url':'https://edition.cnn.com/',
+                'type': 'web',
+                'description': 'News Articles',
+                'category': 'News'
+        
             }
-            'name':
         ]
     
     def get_suggested_sources(self) -> List[Dict[str, Any]]:
