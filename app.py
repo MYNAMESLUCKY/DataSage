@@ -344,6 +344,9 @@ class RAGSystemApp:
             total = len(st.session_state.data_sources)
             progress = completed / total if total > 0 else 0
             
+            # Ensure progress is within valid range [0.0, 1.0]
+            progress = min(max(progress, 0.0), 1.0)
+            
             progress_bar.progress(progress)
             status_placeholder.write(f"Processed {completed}/{total} sources")
 
