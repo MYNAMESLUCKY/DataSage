@@ -419,7 +419,6 @@ class RAGSystemApp:
         for i, suggested_query in enumerate(suggested_queries):
             with query_cols[i % 2]:
                 if st.button(suggested_query, key=f"suggest_query_{i}"):
-                    st.session_state.query_input = suggested_query
                     self.process_query(suggested_query)
 
         # Query history
