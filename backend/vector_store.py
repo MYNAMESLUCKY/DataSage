@@ -195,9 +195,10 @@ class VectorStoreManager:
                 
                 if similarity >= threshold and len(filtered_docs) < k:
                     doc = self.documents[idx]
-                    # Add similarity score to metadata
-                    doc.metadata['similarity_score'] = float(similarity)
-                    filtered_docs.append(doc)
+                    # Create a copy to avoid modifying original
+                    doc_copy = Document(page_content=doc.page_content, metadata=doc.metadata.copy())
+                    doc_copy.metadata['similarity_score'] = float(similarity)
+                    filtered_docs.append(doc_copy)
             
             logger.info(f"Found {len(filtered_docs)} relevant documents above threshold {threshold}")
             return filtered_docs

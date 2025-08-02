@@ -196,6 +196,29 @@ class RAGSystemAPI:
                 'error': str(e)
             }
     
+    def get_system_stats(self) -> Dict[str, Any]:
+        """Get comprehensive system statistics"""
+        try:
+            vector_stats = self.vector_store.get_stats()
+            memory_usage = self._get_memory_usage()
+            
+            return {
+                'total_documents': vector_stats.get('total_documents', 0),
+                'total_sources': len(getattr(self, '_sources', [])),
+                'processing_status': 'ready',
+                'embedding_model': vector_stats.get('embedding_model', 'N/A'),
+                'memory_usage': memory_usage,
+                'vector_store_initialized': self.vector_store.is_initialized
+            }
+        except Exception as e:
+            logger.error(f"Error getting system stats: {str(e)}")
+            return {
+                'total_documents': 0,
+                'total_sources': 0,
+                'processing_status': 'error',
+                'error': str(e)
+            }
+    
     def get_processing_status(self) -> Dict[str, Any]:
         """Get current processing status"""
         return {

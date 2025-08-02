@@ -40,7 +40,7 @@ class DataIngestionService:
         
     def _initialize_text_splitter(self, chunk_size: int = 512, chunk_overlap: int = 50):
         """Initialize text splitter with specified parameters"""
-        if chunk_size != self.text_splitter.chunk_size or chunk_overlap != self.text_splitter.chunk_overlap:
+        if chunk_size != self.text_splitter._chunk_size or chunk_overlap != self.text_splitter._chunk_overlap:
             self.text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=chunk_size,
                 chunk_overlap=chunk_overlap,
