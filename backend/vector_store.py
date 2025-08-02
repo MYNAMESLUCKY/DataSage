@@ -168,7 +168,7 @@ class VectorStoreManager:
         self, 
         query: str, 
         k: int = 5, 
-        threshold: float = 0.7
+        threshold: float = 0.1
     ) -> List[Document]:
         """
         Perform similarity search for the given query
@@ -334,3 +334,12 @@ class VectorStoreManager:
             
         except Exception as e:
             logger.error(f"Error optimizing index: {str(e)}")
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get vector store statistics"""
+        return {
+            'total_documents': len(self.documents),
+            'embedding_model': self.current_embedding_model_name or 'all-MiniLM-L6-v2',
+            'is_initialized': self.is_initialized,
+            'index_size': len(self.documents) if self.documents else 0
+        }
