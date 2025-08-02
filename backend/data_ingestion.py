@@ -60,7 +60,9 @@ class DataIngestionService:
         try:
             logger.info(f"Ingesting content from URL: {url}")
             
-            # Validate URL
+            # Normalize and validate URL
+            from .utils import normalize_url
+            url = normalize_url(url)
             if not validate_url(url):
                 raise ValueError(f"Invalid URL: {url}")
             

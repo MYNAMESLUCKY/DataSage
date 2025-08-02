@@ -69,9 +69,17 @@ def cache_result(ttl: int = 300):
         return wrapper
     return decorator
 
+def normalize_url(url: str) -> str:
+    """Normalize URL by adding protocol if missing"""
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    return url
+
 def validate_url(url: str) -> bool:
     """Validate if a string is a valid URL"""
     try:
+        # Normalize URL first
+        url = normalize_url(url)
         result = urlparse(url)
         return all([result.scheme, result.netloc])
     except Exception:
