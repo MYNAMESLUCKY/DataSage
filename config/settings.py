@@ -47,13 +47,18 @@ class ProcessingConfig:
 @dataclass
 class VectorStoreConfig:
     """Vector store configuration"""
-    index_type: str = "faiss"
+    index_type: str = "chromadb"
     similarity_metric: str = "cosine"
     index_path: str = "vector_store_index"
     cache_embeddings: bool = True
     batch_size: int = 100
     
-    # FAISS specific settings
+    # ChromaDB specific settings
+    chroma_collection_name: str = "rag_documents"
+    chroma_persist_directory: str = "./chroma_db"
+    embedding_model_name: str = "all-MiniLM-L6-v2"
+    
+    # FAISS specific settings (legacy)
     faiss_index_type: str = "IndexFlatIP"  # Inner Product for cosine similarity
     enable_gpu: bool = False
 

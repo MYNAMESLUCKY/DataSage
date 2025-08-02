@@ -55,12 +55,13 @@ Preferred communication style: Simple, everyday language.
 ## AI/ML Services
 - **OpenRouter API**: Primary AI service supporting multiple model providers (requires API key)
 - **OpenAI API**: Direct API support as fallback option (optional API key)
-- **TF-IDF Vectorization**: Local document embedding using scikit-learn
+- **ChromaDB**: Vector database for embeddings and similarity search
 
 ## Vector Storage
-- **TF-IDF Vectorization**: Scikit-learn based text vectorization for similarity search
-- **Persistent Storage**: Local file system for vector index and document storage
-- **Cosine Similarity**: Efficient similarity calculation for document retrieval
+- **ChromaDB**: Advanced vector database with built-in embeddings and persistent storage
+- **Default Embeddings**: ChromaDB's built-in embedding models for text vectorization
+- **Cosine Similarity**: High-performance similarity search with ChromaDB's HNSW indexing
+- **Persistent Storage**: Automatic data persistence with ChromaDB's built-in storage layer
 
 ## Web Scraping & Content Processing
 - **Trafilatura**: Web content extraction and cleaning

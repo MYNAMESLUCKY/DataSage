@@ -5,43 +5,61 @@ import time
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 
-# Vector store and embeddings
+# Vector store and embeddings - Legacy FAISS support
 import faiss
 import sklearn.feature_extraction.text as sklearn_text
 from sklearn.metrics.pairwise import cosine_similarity
+
+# ChromaDB support
+from .vector_store_chroma import ChromaVectorStoreManager
 
 # LangChain
 from langchain.schema import Document
 
 from .utils import setup_logging, performance_monitor
+from config.settings import settings
 
 logger = setup_logging(__name__)
 
 class VectorStoreManager:
     """
-    Manager for vector storage and similarity search using FAISS
+    Manager for vector storage and similarity search using ChromaDB or legacy FAISS
     """
     
     def __init__(self):
+        # ChromaDB store (primary)
+        self.chroma_store = None
+        
+        # Legacy FAISS store (fallback)
         self.vector_store = None
         self.vectorizer = None
         self.document_vectors = None
+        
+        # Common attributes
         self.current_embedding_model_name = None
         self.documents = []
         self.is_initialized = False
         self.index_path = "vector_store_index"
+        
+        # Determine which vector store to use
+        self.use_chromadb = settings.vector_store.index_type == "chromadb"
         
     def initialize(self, embedding_model_name: str = "all-MiniLM-L6-v2"):
         """Initialize the vector store with specified embedding model"""
         try:
             logger.info(f"Initializing vector store with model: {embedding_model_name}")
             
-            # Initialize embedding model
-            self._load_embedding_model(embedding_model_name)
-            
-            # Try to load existing index
-            if os.path.exists(f"{self.index_path}_docs.pkl"):
-                self._load_existing_index()
+            if self.use_chromadb:
+                # Initialize ChromaDB
+                self.chroma_store = ChromaVectorStoreManager(config=settings.vector_store)
+                self.chroma_store.initialize(embedding_model_name)
+                self.documents = self.chroma_store.documents
+                self.current_embedding_model_name = embedding_model_name
+            else:
+                # Initialize legacy FAISS store
+                self._load_embedding_model(embedding_model_name)
+                if os.path.exists(f"{self.index_path}_docs.pkl"):
+                    self._load_existing_index()
             
             self.is_initialized = True
             logger.info("Vector store initialized successfully")
@@ -103,39 +121,41 @@ class VectorStoreManager:
         try:
             logger.info(f"Adding {len(documents)} documents to vector store")
             
-            # Change embedding model if specified
+            if self.use_chromadb:
+                # Use ChromaDB
+                valid_documents = [doc for doc in documents if doc.page_content.strip()]
+                if valid_documents:
+                    success = self.chroma_store.add_documents(valid_documents)
+                    if success:
+                        self.documents = self.chroma_store.documents
+                        logger.info(f"Successfully added {len(valid_documents)} documents via ChromaDB. Total: {len(self.documents)}")
+                return
+            
+            # Legacy FAISS implementation
             if embedding_model and embedding_model != self.current_embedding_model_name:
                 self._load_embedding_model(embedding_model)
-                # If model changed, recreate vector store
                 self.document_vectors = None
                 self.documents = []
             
-            # Ensure we have valid documents
             valid_documents = [doc for doc in documents if doc.page_content.strip()]
             
             if not valid_documents:
                 logger.warning("No valid documents to add")
                 return
             
-            # Create or update vector store
             if self.document_vectors is None:
-                # Create new vectors
                 document_texts = [doc.page_content for doc in valid_documents]
                 self.document_vectors = self.vectorizer.fit_transform(document_texts)
                 self.documents = valid_documents.copy()
             else:
-                # Add to existing vectors
                 document_texts = [doc.page_content for doc in valid_documents]
                 new_vectors = self.vectorizer.transform(document_texts)
                 
-                # Combine with existing vectors
                 import scipy.sparse
                 self.document_vectors = scipy.sparse.vstack([self.document_vectors, new_vectors])
                 self.documents.extend(valid_documents)
             
-            # Save the updated index
             self._save_index()
-            
             logger.info(f"Successfully added {len(valid_documents)} documents. Total: {len(self.documents)}")
             
         except Exception as e:
@@ -174,20 +194,20 @@ class VectorStoreManager:
         Perform similarity search for the given query
         """
         try:
+            if self.use_chromadb:
+                # Use ChromaDB
+                return self.chroma_store.similarity_search(query, k=k, threshold=threshold)
+            
+            # Legacy FAISS implementation
             if self.document_vectors is None or self.vectorizer is None:
                 logger.warning("No vector store available for similarity search")
                 return []
             
             logger.info(f"Performing similarity search for query: {query[:50]}...")
             
-            # Transform query to vector
             query_vector = self.vectorizer.transform([query])
-            
-            # Calculate similarities
             similarities = cosine_similarity(query_vector, self.document_vectors).flatten()
-            
-            # Get top k similar documents above threshold
-            similar_indices = np.argsort(similarities)[::-1]  # Sort descending
+            similar_indices = np.argsort(similarities)[::-1]
             
             filtered_docs = []
             for idx in similar_indices:
@@ -195,7 +215,6 @@ class VectorStoreManager:
                 
                 if similarity >= threshold and len(filtered_docs) < k:
                     doc = self.documents[idx]
-                    # Create a copy to avoid modifying original
                     doc_copy = Document(page_content=doc.page_content, metadata=doc.metadata.copy())
                     doc_copy.metadata['similarity_score'] = float(similarity)
                     filtered_docs.append(doc_copy)
