@@ -55,7 +55,7 @@ class DataSourceManager:
                 'description': 'Data science and ML articles on Medium',
                 'category': 'Community'
             }
-            'name'
+            'name':
         ]
     
     def get_suggested_sources(self) -> List[Dict[str, Any]]:
