@@ -40,7 +40,7 @@ class VectorStoreManager:
             self._load_embedding_model(embedding_model_name)
             
             # Try to load existing index
-            if os.path.exists(f"{self.index_path}.faiss"):
+            if os.path.exists(f"{self.index_path}_docs.pkl"):
                 self._load_existing_index()
             
             self.is_initialized = True
