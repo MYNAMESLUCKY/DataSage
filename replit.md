@@ -39,10 +39,11 @@ Preferred communication style: Simple, everyday language.
 - **Storage**: FAISS for efficient similarity search and retrieval
 
 ## AI Model Integration
-- **Primary**: OpenAI GPT models (gpt-4o, gpt-3.5-turbo) for text generation
-- **Fallback**: HuggingFace models as backup option
-- **Embeddings**: HuggingFace sentence transformers (all-MiniLM-L6-v2)
+- **Primary**: OpenRouter API supporting multiple models (GPT-4, Claude, Llama) for text generation
+- **Fallback**: Direct OpenAI API support as backup option
+- **Embeddings**: TF-IDF vectorization with scikit-learn for efficient similarity search
 - **Prompt Engineering**: ChatPromptTemplate for structured AI interactions
+- **Model Selection**: Configurable models including openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
 
 ## Configuration Management
 - **Settings**: Centralized configuration with dataclasses for type safety
@@ -52,13 +53,14 @@ Preferred communication style: Simple, everyday language.
 # External Dependencies
 
 ## AI/ML Services
-- **OpenAI API**: Primary language model for query answering (requires API key)
-- **HuggingFace**: Embedding models and fallback language models (optional API key)
-- **Sentence Transformers**: Local embedding model execution
+- **OpenRouter API**: Primary AI service supporting multiple model providers (requires API key)
+- **OpenAI API**: Direct API support as fallback option (optional API key)
+- **TF-IDF Vectorization**: Local document embedding using scikit-learn
 
 ## Vector Storage
-- **FAISS**: Facebook AI Similarity Search for vector indexing and retrieval
-- **Persistent Storage**: Local file system for vector index persistence
+- **TF-IDF Vectorization**: Scikit-learn based text vectorization for similarity search
+- **Persistent Storage**: Local file system for vector index and document storage
+- **Cosine Similarity**: Efficient similarity calculation for document retrieval
 
 ## Web Scraping & Content Processing
 - **Trafilatura**: Web content extraction and cleaning

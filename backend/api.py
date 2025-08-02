@@ -145,7 +145,7 @@ class RAGSystemAPI:
         query: str, 
         llm_model: str = "gpt-4o",
         max_results: int = 5,
-        similarity_threshold: float = 0.7
+        similarity_threshold: float = 0.1
     ) -> Dict[str, Any]:
         """
         Process a query and return intelligent answers with source attribution
