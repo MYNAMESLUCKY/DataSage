@@ -27,20 +27,31 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["gpt-4o", "gpt-3.5-turbo", "huggingface"]
+        self.available_models = ["gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.api_provider = "Unknown"
         
     def initialize(self):
         """Initialize the RAG engine with AI models"""
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Initialize OpenAI client
+            # Initialize OpenAI client (supporting OpenRouter)
+            openrouter_api_key = os.getenv("OPENROUTER_API")
             openai_api_key = os.getenv("OPENAI_API_KEY")
-            if openai_api_key:
+            
+            if openrouter_api_key:
+                self.openai_client = OpenAI(
+                    api_key=openrouter_api_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+                self.api_provider = "OpenRouter"
+                logger.info("OpenRouter client initialized successfully")
+            elif openai_api_key:
                 self.openai_client = OpenAI(api_key=openai_api_key)
+                self.api_provider = "OpenAI"
                 logger.info("OpenAI client initialized successfully")
             else:
-                logger.warning("OpenAI API key not found. OpenAI models will not be available.")
+                logger.warning("No API key found (OpenRouter or OpenAI). AI models will not be available.")
             
             self.is_ready = True
             logger.info("RAG Engine initialized successfully")
