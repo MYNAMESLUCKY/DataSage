@@ -110,19 +110,44 @@ class DataIngestionService:
         Extract clean text content from a web page
         """
         try:
-            # Fetch the webpage
-            response = self.session.get(url, timeout=30)
+            # Enhanced headers for better scraping success
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                'Cache-Control': 'no-cache'
+            }
+            
+            # Fetch the webpage with enhanced headers
+            response = self.session.get(url, timeout=30, headers=headers)
             response.raise_for_status()
             
-            # Use trafilatura for content extraction (best for readability)
-            text_content = trafilatura.extract(response.text)
+            # Use trafilatura with enhanced settings for content extraction
+            text_content = trafilatura.extract(
+                response.text, 
+                include_comments=False, 
+                include_tables=True,
+                include_formatting=False,
+                favor_precision=True
+            )
             
-            if text_content:
+            if text_content and len(text_content.strip()) > 50:
                 return clean_text(text_content)
             
             # Fallback: use BeautifulSoup if trafilatura fails
             logger.info("Trafilatura extraction failed, falling back to BeautifulSoup")
-            return self._extract_with_beautifulsoup(response.text, url)
+            extracted = self._extract_with_beautifulsoup(response.text, url)
+            
+            if extracted and len(extracted.strip()) > 50:
+                return extracted
+            
+            # Special handling for news sites with JavaScript content
+            if 'news.google.com' in url or 'google.com/news' in url:
+                return self._extract_google_news_content(response.text, url)
+            
+            return ""
             
         except requests.RequestException as e:
             logger.error(f"Failed to fetch URL {url}: {str(e)}")
