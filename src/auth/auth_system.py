@@ -129,6 +129,56 @@ class AuthenticationSystem:
             failed_attempts = cursor.fetchone()[0]
             return failed_attempts < self.max_login_attempts
     
+    def _has_any_users(self) -> bool:
+        """Check if any users exist in the database"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("SELECT COUNT(*) FROM users")
+            count = cursor.fetchone()[0]
+            return count > 0
+    
+    def _get_user_by_email(self, email: str) -> Optional[Dict]:
+        """Get user by email address"""
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.execute("""
+                SELECT username, email, role, created_at, last_login, is_active 
+                FROM users WHERE email = ?
+            """, (email,))
+            
+            row = cursor.fetchone()
+            if row:
+                return {
+                    'username': row[0],
+                    'email': row[1], 
+                    'role': row[2],
+                    'created_at': row[3],
+                    'last_login': row[4],
+                    'is_active': row[5]
+                }
+            return None
+    
+    def register_firebase_user(self, username: str, email: str, role: str, firebase_uid: str) -> Dict:
+        """Register Firebase user in local database"""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.execute("""
+                    INSERT INTO users (username, email, password_hash, salt, role, created_at, is_active)
+                    VALUES (?, ?, ?, ?, ?, ?, 1)
+                """, (
+                    username,
+                    email,
+                    f"firebase:{firebase_uid}",  # Use Firebase UID as password hash
+                    "firebase_auth",  # Special salt for Firebase users
+                    role,
+                    datetime.now()
+                ))
+                
+                return {"success": True, "message": "Firebase user registered successfully"}
+                
+        except sqlite3.IntegrityError:
+            return {"success": False, "message": "User already exists"}
+        except Exception as e:
+            return {"success": False, "message": f"Registration failed: {str(e)}"}
+
     def register_user(self, username: str, email: str, password: str, role: UserRole = UserRole.USER) -> Dict:
         """Register new user"""
         try:

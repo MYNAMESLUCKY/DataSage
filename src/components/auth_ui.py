@@ -7,15 +7,212 @@ from typing import Optional
 import time
 from ..auth.auth_system import AuthenticationSystem, UserRole, init_auth_session, check_authentication
 from ..security.rate_limiter import RateLimiter, RateLimitType, rate_limit
+import os
 
 def show_login_page():
-    """Display login page"""
-    st.title("🔐 RAG System Login")
-    st.markdown("---")
+    """Display login page with Google Firebase integration"""
+    st.markdown('<div class="main-header"><h1>🏢 Enterprise RAG System</h1><p>Secure Authentication Portal</p></div>', 
+                unsafe_allow_html=True)
+    
+    # Check if already authenticated
+    if st.session_state.get('authenticated', False):
+        st.success("✅ Already authenticated!")
+        return True
     
     # Initialize auth system
     init_auth_session()
     auth_system = st.session_state.auth_system
+    
+    # Check if Firebase is available
+    firebase_available = check_firebase_availability()
+    
+    if firebase_available:
+        # Show tabbed interface with Google login
+        tab1, tab2 = st.tabs(["🌐 Google Login", "🔑 Standard Login"])
+        
+        with tab1:
+            from src.components.google_auth import show_google_login_button
+            return show_google_login_button()
+        
+        with tab2:
+            return show_standard_login_form()
+    else:
+        # Show only standard login
+        return show_standard_login_form()
+
+def check_firebase_availability():
+    """Check if Firebase credentials are available"""
+    required_vars = [
+        "FIREBASE_PROJECT_ID",
+        "FIREBASE_PRIVATE_KEY", 
+        "FIREBASE_CLIENT_EMAIL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET"
+    ]
+    return all(os.getenv(var) for var in required_vars)
+
+def show_google_firebase_login():
+    """Display Google Firebase login option"""
+    st.info("🔐 Sign in with your Google account for secure access")
+    
+    # Firebase Web SDK integration
+    firebase_config = get_firebase_web_config()
+    
+    if firebase_config:
+        # Embed Firebase Web SDK
+        st.markdown(f"""
+        <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+        <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+        
+        <script>
+        // Firebase configuration
+        const firebaseConfig = {firebase_config};
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        // Google Sign-In
+        function signInWithGoogle() {{
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider)
+                .then((result) => {{
+                    // Get the ID token
+                    result.user.getIdToken().then((idToken) => {{
+                        // Send token to Streamlit
+                        window.parent.postMessage({{
+                            type: 'firebase-auth-success',
+                            idToken: idToken,
+                            user: {{
+                                uid: result.user.uid,
+                                email: result.user.email,
+                                displayName: result.user.displayName,
+                                photoURL: result.user.photoURL
+                            }}
+                        }}, '*');
+                    }});
+                }})
+                .catch((error) => {{
+                    window.parent.postMessage({{
+                        type: 'firebase-auth-error',
+                        error: error.message
+                    }}, '*');
+                }});
+        }}
+        </script>
+        
+        <div style="text-align: center; padding: 20px;">
+            <button onclick="signInWithGoogle()" 
+                    style="background-color: #4285f4; color: white; border: none; 
+                           padding: 12px 24px; border-radius: 4px; font-size: 16px; 
+                           cursor: pointer;">
+                🚀 Sign in with Google
+            </button>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Handle authentication result
+        handle_firebase_auth_result()
+    else:
+        st.error("Google Authentication not configured")
+
+def get_firebase_web_config():
+    """Get Firebase web configuration"""
+    project_id = os.getenv("FIREBASE_PROJECT_ID")
+    if not project_id:
+        return None
+    
+    return f"""{{
+        apiKey: "web-api-key",
+        authDomain: "{project_id}.firebaseapp.com",
+        projectId: "{project_id}",
+        storageBucket: "{project_id}.appspot.com",
+        messagingSenderId: "sender-id",
+        appId: "app-id"
+    }}"""
+
+def handle_firebase_auth_result():
+    """Handle Firebase authentication result from JavaScript"""
+    # This would need to be handled via Streamlit components
+    # For now, show manual token input as fallback
+    
+    st.markdown("---")
+    st.write("**Alternative: Manual Token Input**")
+    
+    with st.form("firebase_token_form"):
+        id_token = st.text_area("Firebase ID Token", 
+                                placeholder="Paste your Firebase ID token here",
+                                help="Get this from your browser's developer console after Google sign-in")
+        
+        if st.form_submit_button("🔓 Authenticate with Token"):
+            if id_token:
+                process_firebase_token(id_token)
+
+def process_firebase_token(id_token: str):
+    """Process Firebase ID token for authentication"""
+    try:
+        # Initialize Firebase Auth Manager
+        if 'firebase_auth' not in st.session_state:
+            from src.auth.firebase_auth import FirebaseAuthManager
+            st.session_state.firebase_auth = FirebaseAuthManager()
+        
+        firebase_auth = st.session_state.firebase_auth
+        
+        # Verify Firebase token
+        user_info = firebase_auth.verify_firebase_token(id_token)
+        
+        if user_info:
+            # Determine user role
+            role = determine_user_role(user_info['email'])
+            
+            # Create JWT token
+            jwt_token = firebase_auth.create_jwt_from_firebase(user_info, role)
+            
+            if jwt_token:
+                # Set session state
+                st.session_state.authenticated = True
+                st.session_state.user_token = jwt_token
+                st.session_state.user_info = {
+                    'username': user_info['email'],
+                    'email': user_info['email'],
+                    'name': user_info.get('name', ''),
+                    'role': role,
+                    'provider': 'google',
+                    'picture': user_info.get('picture')
+                }
+                
+                # Sync with local auth
+                firebase_auth.sync_with_local_auth(user_info, role)
+                
+                st.success(f"✅ Successfully authenticated as {user_info['name']} ({role})")
+                time.sleep(1)
+                st.rerun()
+            else:
+                st.error("Failed to create session token")
+        else:
+            st.error("Invalid Firebase token")
+            
+    except Exception as e:
+        st.error(f"Authentication failed: {str(e)}")
+
+def determine_user_role(email: str) -> str:
+    """Determine user role for new Firebase user"""
+    auth_system = st.session_state.auth_system
+    
+    # Check if this is the first user
+    if not auth_system._has_any_users():
+        return 'admin'
+    
+    # Check if user exists locally
+    existing_user = auth_system._get_user_by_email(email)
+    if existing_user:
+        return existing_user.get('role', 'user')
+    
+    return 'user'
+
+def show_standard_login_form():
+    """Show standard username/password login form"""
+    st.info("🔑 Use your registered username and password")
     
     # Login form
     with st.form("login_form"):
@@ -39,17 +236,21 @@ def show_login_page():
                     st.session_state.user_token = result["token"]
                     st.session_state.user_info = {
                         "username": result["username"],
-                        "role": result["role"]
+                        "role": result["role"],
+                        "provider": "local"
                     }
                     st.success("✅ Login successful!")
                     time.sleep(1)
                     st.rerun()
+                    return True
                 else:
                     st.error(f"❌ {result['message']}")
         
         if register_clicked:
             st.session_state.show_register = True
             st.rerun()
+            
+    return False
     
     # Show registration form if requested
     if st.session_state.get('show_register', False):

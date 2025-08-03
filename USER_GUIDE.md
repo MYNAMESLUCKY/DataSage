@@ -30,15 +30,32 @@
 
 ## Account Registration
 
-### Registration Process
-1. Click the **"Register"** button on the login page
-2. Fill in the registration form:
+### Authentication Options
+
+#### Google Authentication (if enabled)
+1. Click the **"Google Login"** tab on the login page
+2. Click **"Sign in with Google"** button
+3. You'll be redirected to Google's secure login page
+4. Sign in with your Google account credentials
+5. Grant permissions when prompted
+6. You'll be automatically signed in and redirected back
+
+**Benefits of Google Authentication:**
+- No password to remember
+- Automatic email verification
+- Enhanced security through Google
+- Single sign-on convenience
+
+#### Standard Registration Process
+1. Click the **"Standard Login"** tab on the login page
+2. Click the **"Register"** button
+3. Fill in the registration form:
    - **Username**: Unique identifier (3+ characters)
    - **Email**: Valid email address for notifications
    - **Password**: Secure password (8+ characters)
    - **Confirm Password**: Must match the password
-3. Click **"Create Account"**
-4. Upon success, you'll be redirected to login
+4. Click **"Create Account"**
+5. Upon success, you'll be redirected to login
 
 ### User Roles
 - **Admin**: Full system access, user management, system configuration
