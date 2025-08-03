@@ -27,7 +27,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["moonshotai/kimi-k2:free", "deepseek-chat", "deepseek-coder", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.available_models = ["sarvamai/sarvam-1", "deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -35,13 +35,26 @@ class RAGEngine:
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Check what type of API key we have in DEEPSEEK_API
+            # Check available API keys with SARVAM_API as primary
+            sarvam_api_key = os.getenv("SARVAM_API")
             deepseek_api_key = os.getenv("DEEPSEEK_API")
             openrouter_api_key = os.getenv("OPENROUTER_API")
             openai_api_key = os.getenv("OPENAI_API_KEY")
             
-            # Try DeepSeek native API first (more reliable than OpenRouter free tier)
-            if deepseek_api_key:
+            # Try SARVAM_API first (most reliable)
+            if sarvam_api_key:
+                try:
+                    self.openai_client = OpenAI(
+                        api_key=sarvam_api_key,
+                        base_url="https://api.sarvam.ai/v1"
+                    )
+                    self.api_provider = "SARVAM"
+                    self.default_model = "sarvamai/sarvam-1"
+                    logger.info("SARVAM API client initialized successfully")
+                except Exception as e:
+                    logger.warning(f"SARVAM API failed: {e}, trying DeepSeek...")
+            # Try DeepSeek native API second
+            elif deepseek_api_key:
                 try:
                     # First try as native DeepSeek API
                     self.openai_client = OpenAI(
@@ -103,7 +116,7 @@ class RAGEngine:
         try:
             # Use default model if none specified - ensure we always have a string
             if llm_model is None or llm_model == "":
-                llm_model = getattr(self, 'default_model', 'deepseek-chat')
+                llm_model = getattr(self, 'default_model', 'sarvamai/sarvam-1')
             
             # Ensure llm_model is always a string at this point
             assert isinstance(llm_model, str), f"llm_model must be a string, got {type(llm_model)}"
@@ -152,15 +165,19 @@ class RAGEngine:
         return "\n".join(context_parts)
     
     def _generate_ai_answer(self, query: str, context: str, model: str) -> Dict[str, Any]:
-        """Generate answer using AI models (DeepSeek, OpenAI, etc.)"""
-        try:
-            if not self.openai_client:
-                raise Exception("No AI client available")
-            
-            # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-            # do not change this unless explicitly requested by the user
-            
-            prompt = f"""You are an expert knowledge assistant providing comprehensive, accurate answers.
+        """Generate answer using AI models with automatic fallback on rate limits"""
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                if not self.openai_client:
+                    raise Exception("No AI client available")
+                
+                # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
+                # do not change this unless explicitly requested by the user
+                
+                prompt = f"""You are an expert knowledge assistant providing comprehensive, accurate answers.
 
 CRITICAL INSTRUCTION: Provide your answer in clean, readable format WITHOUT embedding source citations mid-sentence. Sources will be listed separately.
 
@@ -182,43 +199,95 @@ Please provide your answer in JSON format:
 {{"answer": "your clean, comprehensive answer without any source citations embedded", "confidence": confidence_score_between_0_and_1}}
 """
 
-            # Adjust parameters based on model type
-            request_params = {
-                "model": model,
-                "messages": [
-                    {"role": "system", "content": "You are a helpful AI assistant specialized in analyzing documents and providing accurate answers."},
-                    {"role": "user", "content": prompt}
-                ],
-                "temperature": 0.3,
-                "max_tokens": 1000
-            }
-            
-            # Only add response_format for models that support it (exclude deepseek and kimi models)
-            if not model.startswith("deepseek") and not model.startswith("moonshotai/kimi"):
-                request_params["response_format"] = {"type": "json_object"}
+                # Adjust parameters based on model type
+                request_params = {
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": "You are a helpful AI assistant specialized in analyzing documents and providing accurate answers."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 1000
+                }
+                
+                # Only add response_format for models that support it (exclude certain models)
+                if not any(model.startswith(prefix) for prefix in ["deepseek", "moonshotai/kimi", "sarvamai"]):
+                    request_params["response_format"] = {"type": "json_object"}
 
-            response = self.openai_client.chat.completions.create(**request_params)
+                response = self.openai_client.chat.completions.create(**request_params)
+                
+                content = response.choices[0].message.content
+                if content:
+                    # Try to parse JSON if available, otherwise use content directly
+                    try:
+                        result = json.loads(content)
+                        return {
+                            'answer': result.get('answer', content),
+                            'confidence': result.get('confidence', 0.8)
+                        }
+                    except json.JSONDecodeError:
+                        # If JSON parsing fails, use content directly
+                        return {
+                            'answer': content,
+                            'confidence': 0.8
+                        }
+                else:
+                    return {"answer": "No response generated", "confidence": 0.0}
+                    
+            except Exception as e:
+                error_str = str(e)
+                logger.error(f"AI API error (attempt {retry_count + 1}): {error_str}")
+                
+                # Check if this is a rate limit error
+                if "429" in error_str or "rate limit" in error_str.lower():
+                    retry_count += 1
+                    if retry_count < max_retries:
+                        logger.info(f"Rate limit hit, trying fallback model (attempt {retry_count + 1})")
+                        # Try fallback model if available
+                        if self._try_fallback_model():
+                            continue
+                        else:
+                            time.sleep(2 ** retry_count)  # Exponential backoff
+                            continue
+                    else:
+                        logger.error("All retry attempts exhausted")
+                        break
+                else:
+                    # Non-rate limit error, don't retry
+                    break
+        
+        # If all retries failed, raise the last error
+        raise Exception(f"Failed to generate AI answer after {max_retries} attempts: {error_str}")
+    
+    def _try_fallback_model(self) -> bool:
+        """Try to switch to a fallback API provider"""
+        try:
+            # Try DeepSeek if currently using SARVAM and DeepSeek key is available
+            if self.api_provider == "SARVAM":
+                deepseek_api_key = os.getenv("DEEPSEEK_API")
+                if deepseek_api_key:
+                    self.openai_client = OpenAI(
+                        api_key=deepseek_api_key,
+                        base_url="https://api.deepseek.com"
+                    )
+                    self.api_provider = "DeepSeek"
+                    self.default_model = "deepseek-chat"
+                    logger.info("Switched to DeepSeek API as fallback")
+                    return True
             
-            content = response.choices[0].message.content
-            if content:
-                # Try to parse JSON if available, otherwise use content directly
-                try:
-                    result = json.loads(content)
-                    return {
-                        'answer': result.get('answer', content),
-                        'confidence': result.get('confidence', 0.8)
-                    }
-                except json.JSONDecodeError:
-                    # If JSON parsing fails, use content directly
-                    return {
-                        'answer': content,
-                        'confidence': 0.8
-                    }
-            else:
-                return {"answer": "No response generated", "confidence": 0.0}
+            # Try OpenAI if available
+            openai_api_key = os.getenv("OPENAI_API_KEY")
+            if openai_api_key:
+                self.openai_client = OpenAI(api_key=openai_api_key)
+                self.api_provider = "OpenAI"
+                self.default_model = "gpt-4o"
+                logger.info("Switched to OpenAI API as fallback")
+                return True
+                
+            return False
         except Exception as e:
-            logger.error(f"OpenAI API error: {str(e)}")
-            raise
+            logger.error(f"Failed to switch to fallback model: {e}")
+            return False
     
     def _generate_fallback_answer(self, query: str, context: str) -> Dict[str, Any]:
         """Generate a fallback answer when AI models are not available"""

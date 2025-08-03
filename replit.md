@@ -98,12 +98,13 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 - **Storage**: FAISS for efficient similarity search and retrieval
 
 ## AI Model Integration
-- **Primary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free) for cost-effective processing
+- **Primary**: SARVAM API (sarvamai/sarvam-1) for reliable processing with automatic fallback
 - **Secondary**: DeepSeek API for fast text generation (deepseek-chat, deepseek-coder) as fallback
-- **Tertiary**: Direct OpenAI API support as final backup option
+- **Tertiary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free) as backup
+- **Final**: Direct OpenAI API support as final backup option
 - **Embeddings**: ChromaDB's built-in embedding models for vector representation
 - **Prompt Engineering**: ChatPromptTemplate for structured AI interactions
-- **Model Selection**: Configurable models including moonshotai/kimi-k2:free, deepseek-chat, deepseek-coder, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
+- **Model Selection**: Configurable models including sarvamai/sarvam-1, deepseek-chat, deepseek-coder, moonshotai/kimi-k2:free, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
 - **Wikipedia Integration**: Specialized Wikipedia ingestion service with rate limiting and smart content filtering
 
 ## Configuration Management
@@ -114,8 +115,10 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 # External Dependencies
 
 ## AI/ML Services
-- **OpenRouter API**: Primary AI service supporting multiple model providers (requires API key)
-- **OpenAI API**: Direct API support as fallback option (optional API key)
+- **SARVAM API**: Primary AI service with automatic fallback capabilities (requires API key)
+- **DeepSeek API**: Fast text generation with competitive performance (requires API key)
+- **OpenRouter API**: Multi-provider AI service supporting various models (optional API key)
+- **OpenAI API**: Direct API support as final fallback option (optional API key)
 - **ChromaDB**: Vector database for embeddings and similarity search
 
 ## Document Processing Libraries
