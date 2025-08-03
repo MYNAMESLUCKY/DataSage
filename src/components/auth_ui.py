@@ -137,7 +137,7 @@ def show_user_dashboard():
             st.warning("👁️ Viewer")
         
         # Logout button
-        if st.button("🚪 Logout", use_container_width=True):
+        if st.button("🚪 Logout", key="sidebar_logout", use_container_width=True):
             auth_system = st.session_state.auth_system
             if st.session_state.user_token:
                 auth_system.logout_user(st.session_state.user_token)
