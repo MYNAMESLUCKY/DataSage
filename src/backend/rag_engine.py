@@ -146,7 +146,7 @@ class RAGEngine:
         """Generate answer using AI models with intelligent rate limiting"""
         
         def make_api_call():
-            """API call function for rate limiter"""
+            """Inner function to make the actual API call"""
             if not self.openai_client:
                 raise Exception("No AI client available")
                 
@@ -235,9 +235,46 @@ Please provide your answer in JSON format:
                     request_params["response_format"] = {"type": "json_object"}
 
                 # Debug logging before API call
-                logger.debug(f"Making API call with params: {request_params}")
+                logger.info(f"Making SARVAM API call with model: {model}")
+                logger.debug(f"Request params: {request_params}")
                 
-                response = self.openai_client.chat.completions.create(**request_params)
+                # Ensure the API client is properly configured
+                if not self.openai_client:
+                    logger.error("OpenAI client is None - SARVAM API not initialized")
+                    return {
+                        "answer": "SARVAM API client not initialized", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+                
+                try:
+                    response = self.openai_client.chat.completions.create(**request_params)
+                    logger.info(f"SARVAM API call completed, response type: {type(response)}")
+                    
+                    # Immediate check for None response
+                    if response is None:
+                        logger.error("SARVAM API returned None response")
+                        return {
+                            "answer": "SARVAM API returned None - API may be temporarily unavailable", 
+                            "confidence": 0.0,
+                            "status": "error",
+                            "model_used": model,
+                            "api_provider": self.api_provider
+                        }
+                        
+                except Exception as api_error:
+                    import traceback
+                    logger.error(f"SARVAM API call failed: {api_error}")
+                    logger.error(f"API error traceback: {traceback.format_exc()}")
+                    return {
+                        "answer": f"SARVAM API call failed: {str(api_error)}", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
                 
                 # Enhanced debugging and validation
                 logger.debug(f"API response received: {type(response)}")
@@ -365,8 +402,19 @@ Please provide your answer in JSON format:
                         "api_provider": self.api_provider
                     }
             
-
-        
+            # CRITICAL BUG FIX: The make_api_call function was processing all the logic
+            # but not returning any value! This caused the NoneType error.
+            # Every code path above has return statements, but we need this catch-all return.
+            
+            # This should never be reached due to the logic above, but adding as safety
+            return {
+                "answer": "API processing completed but no return path was taken", 
+                "confidence": 0.0,
+                "status": "error",
+                "model_used": model,
+                "api_provider": self.api_provider
+            }
+            
         try:
             # Use advanced rate limiter for intelligent backoff
             return rate_limited_api_call(
