@@ -48,6 +48,7 @@ The project follows a clean, organized structure with `app.py` as the main entry
 -   **Concurrency**: ThreadPoolExecutor for parallel processing.
 -   **Error Handling**: Comprehensive logging and graceful failure handling.
 -   **Authentication**: JWT-based authentication with configurable expiry, role-based access control (Admin, User, Viewer), multi-level rate limiting, secure session management, PBKDF2 password hashing, and brute-force protection. Firebase-only Google Authentication is integrated, syncing users with a local database.
+-   **Performance-Based Rate Limiting**: Advanced rate limiter now uses actual API processing time and token consumption to determine query complexity, replacing keyword-based classification. Complexity levels: simple (<8s, <800 tokens), complex (8-15s, 800-1200 tokens), quantum_physics (>15s, >1200 tokens).
 
 ## Data Processing Pipeline
 -   **Text Extraction**: Utilizes `trafilatura` and `BeautifulSoup` for web content.

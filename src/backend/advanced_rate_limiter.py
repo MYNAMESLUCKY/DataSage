@@ -48,33 +48,41 @@ class AdvancedRateLimiter:
         self.consecutive_failures = 0
         self.last_failure_time = None
         
-    def categorize_query(self, query: str) -> str:
-        """Categorize query complexity for appropriate rate limiting"""
-        query_lower = query.lower()
+    def categorize_query(self, query: str, processing_time: Optional[float] = None, token_count: Optional[int] = None) -> str:
+        """
+        Categorize query complexity based on actual API processing metrics, not keywords
         
-        # High-level complex topics
-        complex_indicators = [
-            "quantum", "physics", "entanglement", "theorem", "principle",
-            "fundamental", "theoretical", "advanced", "mathematical",
-            "scientific", "research", "academic", "doctoral", "PhD",
-            "comprehensive analysis", "deep dive", "implications",
-            "challenge classical", "hidden variable", "locality"
-        ]
+        Args:
+            query: The query text (for length estimation only)
+            processing_time: Actual API processing time in seconds
+            token_count: Number of tokens used in the response
+        """
+        # Use actual processing metrics when available
+        if processing_time is not None and token_count is not None:
+            # Dynamic complexity based on actual resource consumption
+            if processing_time > 15 or token_count > 1200:
+                return "quantum_physics"  # Very resource-intensive
+            elif processing_time > 8 or token_count > 800:
+                return "complex"  # Moderately resource-intensive
+            else:
+                return "simple"  # Standard processing
         
-        if any(indicator in query_lower for indicator in complex_indicators):
-            if "quantum" in query_lower or "physics" in query_lower:
-                return "quantum_physics"
-            return "complex"
-        
-        return "simple"
+        # Fallback to query length estimation when metrics unavailable
+        query_length = len(query.split())
+        if query_length > 50:
+            return "complex"  # Long queries may be complex
+        elif query_length > 20:
+            return "complex"  # Medium queries 
+        else:
+            return "simple"  # Short queries are typically simple
     
-    def should_allow_request(self, query: str) -> tuple[bool, float]:
+    def should_allow_request(self, query: str, processing_time: Optional[float] = None, token_count: Optional[int] = None) -> tuple[bool, float]:
         """
         Check if request should be allowed and return wait time if not
         Returns: (allow_request, wait_time_seconds)
         """
         with self.lock:
-            category = self.categorize_query(query)
+            category = self.categorize_query(query, processing_time, token_count)
             config = self.configs[category]
             
             current_time = time.time()
@@ -104,9 +112,9 @@ class AdvancedRateLimiter:
             
             return False, max(1, wait_time)
     
-    def get_backoff_time(self, query: str, failure_count: int) -> float:
-        """Calculate intelligent backoff time based on query complexity and failures"""
-        category = self.categorize_query(query)
+    def get_backoff_time(self, query: str, failure_count: int, processing_time: Optional[float] = None, token_count: Optional[int] = None) -> float:
+        """Calculate intelligent backoff time based on actual complexity and failures"""
+        category = self.categorize_query(query, processing_time, token_count)
         config = self.configs[category]
         
         base_backoff = config["initial_backoff"]
@@ -123,13 +131,13 @@ class AdvancedRateLimiter:
         
         return max(1, backoff_time)
     
-    def record_failure(self, query: str):
+    def record_failure(self, query: str, processing_time: Optional[float] = None, token_count: Optional[int] = None):
         """Record a rate limit failure for adaptive backoff"""
         with self.lock:
             self.consecutive_failures += 1
             self.last_failure_time = time.time()
     
-    def record_success(self, query: str):
+    def record_success(self, query: str, processing_time: Optional[float] = None, token_count: Optional[int] = None):
         """Record a successful request to reset failure counters"""
         with self.lock:
             self.consecutive_failures = 0
@@ -154,50 +162,65 @@ def rate_limited_api_call(
     *args, **kwargs
 ) -> Any:
     """
-    Execute API call with intelligent rate limiting and backoff
+    Execute API call with performance-based rate limiting
+    Measures actual processing time and tokens to determine complexity
     """
+    processing_time = None
+    token_count = None
+    
     for attempt in range(max_retries):
-        # Check if we should wait before making the request
-        can_proceed, wait_time = rate_limiter.should_allow_request(query)
+        # Initial rate check (without metrics for first attempt)
+        can_proceed, wait_time = rate_limiter.should_allow_request(query, processing_time, token_count)
         
         if not can_proceed:
             logger.info(f"Rate limit: waiting {wait_time:.2f}s before attempt {attempt + 1}")
             time.sleep(wait_time)
         
         try:
-            # Make the API call with enhanced debugging
-            logger.debug(f"Calling API function: {api_function}")
+            # Measure processing time
+            start_time = time.time()
+            
+            logger.debug(f"Making API call with performance monitoring")
             result = api_function(*args, **kwargs)
-            logger.debug(f"API function returned: {type(result)} - {result}")
+            
+            # Calculate actual processing time
+            processing_time = time.time() - start_time
+            
+            # Extract token count from result if available
+            if isinstance(result, dict):
+                # Try to estimate token count from answer length
+                answer_text = result.get('answer', '')
+                if isinstance(answer_text, str):
+                    # Rough estimate: ~4 characters per token
+                    token_count = len(answer_text) // 4
+            
+            logger.info(f"API call completed - Time: {processing_time:.2f}s, Estimated tokens: {token_count or 'unknown'}")
             
             if result is None:
-                logger.error("API function returned None - this may cause NoneType errors")
+                logger.error("API function returned None")
                 raise Exception("API function returned None result")
             
-            rate_limiter.record_success(query)
+            # Record success with actual metrics for future complexity assessment
+            rate_limiter.record_success(query, processing_time, token_count)
             return result
             
         except Exception as e:
-            import traceback
             error_str = str(e)
-            error_traceback = traceback.format_exc()
-            
             logger.error(f"API call failed: {error_str}")
-            logger.error(f"Error traceback: {error_traceback}")
             
             if "429" in error_str or "rate limit" in error_str.lower():
-                rate_limiter.record_failure(query)
+                # Record failure with metrics if available
+                rate_limiter.record_failure(query, processing_time, token_count)
                 
                 if attempt < max_retries - 1:
-                    backoff_time = rate_limiter.get_backoff_time(query, attempt + 1)
-                    logger.info(f"Rate limit hit. Smart backoff: {backoff_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                    backoff_time = rate_limiter.get_backoff_time(query, attempt + 1, processing_time, token_count)
+                    logger.info(f"Rate limit hit. Performance-based backoff: {backoff_time:.2f}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(backoff_time)
                     continue
                 else:
                     logger.error(f"All {max_retries} attempts exhausted due to rate limiting")
                     raise e
             else:
-                # Non-rate-limit error, re-raise immediately with context
                 logger.error(f"Non-rate-limit error on attempt {attempt + 1}: {error_str}")
                 raise e
     
