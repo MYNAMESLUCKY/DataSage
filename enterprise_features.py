@@ -9,7 +9,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 import logging
 
@@ -46,7 +46,7 @@ class QueryAnalytics:
     model_used: str
     cost_estimate: float
     satisfaction_score: Optional[float] = None
-    created_at: datetime = None
+    created_at: Optional[datetime] = None
 
 @dataclass
 class DocumentMetadata:

@@ -12,6 +12,8 @@ from .vector_store import VectorStoreManager
 from .wikipedia_ingestion import WikipediaIngestionService
 from .models import DataSource, QueryResult, ProcessingStatus
 from .utils import setup_logging, performance_monitor
+from .cache_manager import get_cache_manager, ContextManager
+from .async_processor import get_async_processor, ProcessingTask
 
 logger = setup_logging(__name__)
 
@@ -27,6 +29,11 @@ class RAGSystemAPI:
         self.wikipedia_ingestion = None  # Initialize after vector store
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.is_ready = False
+        
+        # Enterprise features
+        self.cache_manager = get_cache_manager()
+        self.context_manager = ContextManager()
+        self.async_processor = get_async_processor()
         
         # Initialize components
         self._initialize()
@@ -295,6 +302,83 @@ class RAGSystemAPI:
                 'status': 'error',
                 'error': str(e)
             }
+    
+    def process_files_async(self, uploaded_files: List[Dict[str, Any]]) -> str:
+        """
+        Process uploaded files asynchronously and return task ID for tracking
+        """
+        try:
+            def file_processor(file_data: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+                """Process a single file"""
+                file_name = file_data.get('name', 'unknown')
+                file_content = file_data.get('content')
+                file_type = file_data.get('file_type', 'text')
+                
+                if not file_content:
+                    raise ValueError(f"No content provided for file: {file_name}")
+                
+                # Process with data ingestion service
+                documents = self.data_ingestion.ingest_from_file(
+                    file_content=file_content,
+                    filename=file_name,
+                    file_type=file_type
+                )
+                
+                if documents:
+                    # Add to vector store
+                    self.vector_store.add_documents(documents)
+                    return {
+                        'document_count': len(documents),
+                        'file_name': file_name,
+                        'status': 'success'
+                    }
+                else:
+                    return {
+                        'document_count': 0,
+                        'file_name': file_name,
+                        'status': 'no_content'
+                    }
+            
+            # Submit to async processor
+            task_id = self.async_processor.submit_file_processing(
+                files=uploaded_files,
+                processing_func=file_processor
+            )
+            
+            logger.info(f"Submitted async file processing task: {task_id}")
+            return task_id
+            
+        except Exception as e:
+            logger.error(f"Failed to submit file processing: {str(e)}")
+            raise
+    
+    def get_processing_task_status(self, task_id: str) -> Optional[Dict[str, Any]]:
+        """Get status of async processing task"""
+        task = self.async_processor.get_task_status(task_id)
+        if not task:
+            return None
+        
+        return {
+            'task_id': task.task_id,
+            'task_type': task.task_type,
+            'status': task.status.value,
+            'progress': task.progress,
+            'message': task.message,
+            'created_at': task.created_at,
+            'started_at': task.started_at,
+            'completed_at': task.completed_at,
+            'result': task.result,
+            'error': task.error,
+            'metadata': task.metadata
+        }
+    
+    def cancel_processing_task(self, task_id: str) -> bool:
+        """Cancel an async processing task"""
+        return self.async_processor.cancel_task(task_id)
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """Get cache performance statistics"""
+        return self.cache_manager.get_stats()
     
     def get_system_stats(self) -> Dict[str, Any]:
         """Get comprehensive system statistics"""

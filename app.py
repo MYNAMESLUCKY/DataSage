@@ -14,6 +14,7 @@ from backend.api import RAGSystemAPI
 from backend.models import DataSource, ProcessingStatus, QueryResult
 from components.ui_components import UIComponents
 from components.data_sources import DataSourceManager
+from components.enterprise_ui import EnterpriseUI
 from config.settings import Settings
 
 class RAGSystemApp:
@@ -22,6 +23,7 @@ class RAGSystemApp:
         self.api = RAGSystemAPI()
         self.ui = UIComponents()
         self.data_source_manager = DataSourceManager()
+        self.enterprise_ui = EnterpriseUI(self.api)
         
         # Initialize session state
         if 'current_step' not in st.session_state:
@@ -147,7 +149,8 @@ class RAGSystemApp:
         steps = [
             ("1. Data Ingestion", 1),
             ("2. Processing", 2),
-            ("3. Querying", 3)
+            ("3. Querying", 3),
+            ("4. Analytics", 4)
         ]
 
         for step_name, step_num in steps:
@@ -207,12 +210,15 @@ class RAGSystemApp:
             self.render_processing()
         elif st.session_state.current_step == 3:
             self.render_querying()
+        elif st.session_state.current_step == 4:
+            self.render_analytics()
 
     def render_step_indicator(self):
         steps = [
             ("Data Ingestion", 1),
             ("Processing", 2),
-            ("Querying", 3)
+            ("Querying", 3),
+            ("Analytics", 4)
         ]
 
         cols = st.columns(len(steps))
@@ -237,53 +243,8 @@ class RAGSystemApp:
         st.header("📥 Data Ingestion")
         st.write("Add and configure your data sources for processing.")
         
-        # File upload
-        st.subheader("Upload Files")
-        uploaded_files = st.file_uploader(
-            "Choose files to upload",
-            type=['txt', 'pdf', 'csv', 'xlsx', 'docx'],
-            accept_multiple_files=True,
-            help="Upload documents that will be processed and added to your knowledge base"
-        )
-        
-        if uploaded_files:
-            if st.button("Add Uploaded Files"):
-                added_count = 0
-                for uploaded_file in uploaded_files:
-                    try:
-                        # Read file content
-                        file_content = uploaded_file.read()
-                        
-                        # Determine file type
-                        file_extension = uploaded_file.name.split('.')[-1].lower()
-                        if file_extension in ['pdf']:
-                            file_type = 'pdf'
-                        elif file_extension in ['xlsx', 'xls']:
-                            file_type = 'excel'
-                        elif file_extension == 'csv':
-                            file_type = 'csv'
-                        elif file_extension == 'docx':
-                            file_type = 'docx'
-                        else:
-                            file_type = 'text'
-                        
-                        source = DataSource(
-                            url=uploaded_file.name,
-                            source_type="file",
-                            name=uploaded_file.name,
-                            file_type=file_type,
-                            file_content=file_content
-                        )
-                        
-                        st.session_state.data_sources.append(source)
-                        added_count += 1
-                        
-                    except Exception as e:
-                        st.error(f"Error adding {uploaded_file.name}: {str(e)}")
-                
-                if added_count > 0:
-                    st.success(f"Added {added_count} files successfully!")
-                    st.rerun()
+        # Enhanced file upload with async processing
+        self.enterprise_ui.render_async_file_processor()
 
         # Display current sources
         if st.session_state.data_sources:
@@ -365,34 +326,8 @@ class RAGSystemApp:
         st.header("🔍 Intelligent Querying")
         st.write("Ask questions about your processed data and get intelligent answers with source attribution.")
 
-        # Query interface
-        col1, col2 = st.columns([4, 1])
-        
-        with col1:
-            query = st.text_input(
-                "Ask a question about your data:",
-                placeholder="What insights can you provide from the processed data?"
-            )
-        
-        with col2:
-            if st.button("🔍 Query", type="primary", disabled=not query):
-                if query:
-                    self.process_query(query)
-
-        # Suggested queries
-        st.subheader("Suggested Queries")
-        suggested_queries = [
-            "What are the main topics covered in the data?",
-            "Summarize the key insights from all sources",
-            "What trends or patterns can you identify?",
-            "Compare different perspectives from the sources"
-        ]
-
-        query_cols = st.columns(2)
-        for i, suggested_query in enumerate(suggested_queries):
-            with query_cols[i % 2]:
-                if st.button(suggested_query, key=f"suggest_query_{i}"):
-                    self.process_query(suggested_query)
+        # Enhanced query interface with caching and real-time features
+        self.enterprise_ui.render_query_with_enhancements()
 
         # Query history
         if st.session_state.query_history:
@@ -428,6 +363,64 @@ class RAGSystemApp:
                 st.session_state.current_step = 1
                 st.session_state.query_history = []
                 st.rerun()
+    
+    def render_analytics(self):
+        """Render enterprise analytics dashboard"""
+        st.header("📊 Enterprise Analytics")
+        st.write("Monitor system performance, cache efficiency, and usage patterns.")
+        
+        # Render comprehensive dashboard
+        self.enterprise_ui.render_system_dashboard()
+        
+        st.divider()
+        
+        # Cache analytics
+        self.enterprise_ui.render_cache_analytics()
+        
+        # Navigation
+        st.divider()
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("← Back to Querying"):
+                st.session_state.current_step = 3
+                st.rerun()
+        
+        with col2:
+            if st.button("🔄 Refresh Dashboard"):
+                st.rerun()
+
+    def process_query(self, query: str):
+        """Process query and display results"""
+        try:
+            with st.spinner("🔍 Processing your query..."):
+                result = self.api.query(query=query, llm_model="moonshotai/kimi-k2:free")
+            
+            if result['status'] == 'success':
+                st.subheader("💡 Answer")
+                st.write(result['answer'])
+                
+                if result.get('sources'):
+                    st.subheader("📖 Sources")
+                    for i, source in enumerate(result['sources'], 1):
+                        st.write(f"{i}. {source}")
+                
+                # Add to query history
+                if 'query_history' not in st.session_state:
+                    st.session_state.query_history = []
+                
+                st.session_state.query_history.append({
+                    'query': query,
+                    'answer': result['answer'],
+                    'sources': result.get('sources', []),
+                    'confidence': result.get('confidence', 0)
+                })
+                
+                st.success("✅ Query processed successfully!")
+            else:
+                st.error(f"❌ Query failed: {result.get('error', 'Unknown error')}")
+                
+        except Exception as e:
+            st.error(f"Error processing query: {str(e)}")
 
     def process_uploaded_files(self):
         """Process uploaded files"""
@@ -459,38 +452,15 @@ class RAGSystemApp:
         except Exception as e:
             st.error(f"Error during processing: {str(e)}")
 
-    def process_query(self, query: str):
-        """Process a user query and display results"""
-        try:
-            start_time = time.time()
-            
-            with st.spinner("Searching and generating answer..."):
-                result = self.api.query(
-                    query=query,
-                    llm_model=st.session_state.get('selected_llm', 'moonshotai/kimi-k2:free'),
-                    max_results=5
-                )
-                
-                response_time = round(time.time() - start_time, 2)
-                
-                if result['status'] == 'success':
-                    query_result = {
-                        'query': query,
-                        'answer': result['answer'],
-                        'sources': result.get('sources', []),
-                        'confidence': result.get('confidence', 'N/A'),
-                        'response_time': response_time
-                    }
-                    
-                    st.session_state.query_history.append(query_result)
-                    st.success("✅ Query processed successfully!")
-                    st.rerun()
-                else:
-                    st.error(f"❌ Query failed: {result.get('error', 'Unknown error')}")
-                    
-        except Exception as e:
-            st.error(f"Error processing query: {str(e)}")
+
+
+def main():
+    try:
+        app = RAGSystemApp()
+        app.run()
+    except Exception as e:
+        st.error(f"Application error: {str(e)}")
+        st.write("Please check the system logs for more information.")
 
 if __name__ == "__main__":
-    app = RAGSystemApp()
-    app.run()
+    main()
