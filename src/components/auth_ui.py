@@ -101,77 +101,41 @@ def show_firebase_google_login():
             if st.session_state.get('show_firebase_auth', False):
                 st.session_state.show_firebase_auth = False
                 
-                # Embed Firebase authentication script
+                # Use a different approach - redirect to a simple authentication page
+                st.info("🔄 Redirecting to Google authentication...")
+                
+                # Create a simple authentication URL with Firebase config stored securely
+                project_id = os.getenv("FIREBASE_PROJECT_ID")
+                auth_domain = f"{project_id}.firebaseapp.com"
+                
+                # Use Google's OAuth URL directly
+                google_auth_url = f"https://accounts.google.com/o/oauth2/v2/auth"
+                client_id = os.getenv("GOOGLE_CLIENT_ID")
+                redirect_uri = st.get_option("server.baseUrlPath") or "http://localhost:5000"
+                
+                params = {
+                    "client_id": client_id,
+                    "redirect_uri": redirect_uri,
+                    "response_type": "code",
+                    "scope": "email profile openid",
+                    "state": "firebase_auth"
+                }
+                
+                # Create the authentication URL
+                auth_url = google_auth_url + "?" + "&".join([f"{k}={v}" for k, v in params.items()])
+                
                 st.markdown(f"""
-                <div id="firebase-auth-container" style="text-align: center; padding: 20px;">
-                    <p>Opening Google sign-in popup...</p>
-                    <p><small>If popup doesn't appear, check if popups are blocked</small></p>
+                <div style="text-align: center; padding: 20px;">
+                    <p>Redirecting to secure Google authentication...</p>
+                    <script>
+                        setTimeout(function() {{
+                            window.open('{auth_url}', '_blank', 'width=500,height=600');
+                        }}, 1000);
+                    </script>
                 </div>
-                
-                <script type="module">
-                import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-                import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
-                
-                console.log('Firebase script loaded');
-                
-                // Firebase configuration
-                const firebaseConfig = {firebase_config};
-                console.log('Firebase config:', firebaseConfig);
-                
-                try {{
-                    // Initialize Firebase
-                    const app = initializeApp(firebaseConfig);
-                    const auth = getAuth(app);
-                    console.log('Firebase initialized successfully');
-                    
-                    // Google Sign-In
-                    const provider = new GoogleAuthProvider();
-                    provider.addScope('email');
-                    provider.addScope('profile');
-                    
-                    console.log('Starting Google sign-in popup...');
-                    
-                    signInWithPopup(auth, provider)
-                        .then(async (result) => {{
-                            console.log('Sign-in successful:', result.user.email);
-                            
-                            const idToken = await getIdToken(result.user);
-                            console.log('ID token obtained');
-                            
-                            // Redirect with token
-                            const url = new URL(window.location);
-                            url.searchParams.set('firebase_token', idToken);
-                            window.location.href = url.toString();
-                        }})
-                        .catch((error) => {{
-                            console.error('Firebase authentication error:', error);
-                            
-                            let errorMessage = 'Authentication failed: ' + error.message;
-                            
-                            if (error.code === 'auth/popup-blocked') {{
-                                errorMessage = 'Popup was blocked. Please allow popups for this site and try again.';
-                            }} else if (error.code === 'auth/popup-closed-by-user') {{
-                                errorMessage = 'Sign-in cancelled by user.';
-                            }} else if (error.code === 'auth/invalid-api-key') {{
-                                errorMessage = 'Invalid Firebase API key. Please check your configuration.';
-                            }}
-                            
-                            alert(errorMessage);
-                            
-                            // Update the container with error message
-                            document.getElementById('firebase-auth-container').innerHTML = 
-                                '<p style="color: red;">❌ ' + errorMessage + '</p>';
-                        }});
-                        
-                }} catch (initError) {{
-                    console.error('Firebase initialization error:', initError);
-                    alert('Firebase initialization failed: ' + initError.message);
-                    
-                    document.getElementById('firebase-auth-container').innerHTML = 
-                        '<p style="color: red;">❌ Firebase initialization failed</p>';
-                }}
-                </script>
                 """, unsafe_allow_html=True)
+                
+                st.warning("After authentication, please return to this page and refresh.")
         
         # Custom CSS for the button styling
         st.markdown("""
@@ -207,25 +171,14 @@ def show_firebase_google_login():
         st.info("Please configure Firebase credentials to enable Google login")
 
 def get_firebase_web_config():
-    """Get Firebase web configuration"""
+    """Get Firebase web configuration - SECURE VERSION"""
     project_id = os.getenv("FIREBASE_PROJECT_ID")
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
     
     if not project_id:
         return None
     
-    # For Firebase Web SDK, we need the Web API Key from Firebase Console
-    # This is different from the Google Client ID for OAuth
-    web_api_key = os.getenv("FIREBASE_WEB_API_KEY") or "AIzaSyDummyWebAPIKey"
-    
-    return f"""{{
-        apiKey: "{web_api_key}",
-        authDomain: "{project_id}.firebaseapp.com",
-        projectId: "{project_id}",
-        storageBucket: "{project_id}.appspot.com",
-        messagingSenderId: "123456789",
-        appId: "1:123456789:web:abcdef123456"
-    }}"""
+    # Return a secure config indicator without exposing keys
+    return f"firebase-config-{project_id}"
 
 def handle_firebase_auth_result():
     """Handle Firebase authentication result"""
