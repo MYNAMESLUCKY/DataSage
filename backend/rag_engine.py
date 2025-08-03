@@ -27,7 +27,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.available_models = ["moonshotai/kimi-k2:free", "deepseek-chat", "deepseek-coder", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -35,12 +35,21 @@ class RAGEngine:
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Initialize AI client with priority: DeepSeek (as requested by user)
+            # Check what type of API key we have in DEEPSEEK_API
             deepseek_api_key = os.getenv("DEEPSEEK_API")
             openrouter_api_key = os.getenv("OPENROUTER_API")
             openai_api_key = os.getenv("OPENAI_API_KEY")
             
-            if deepseek_api_key:
+            # The DEEPSEEK_API key is actually an OpenRouter key based on its format
+            if deepseek_api_key and deepseek_api_key.startswith("sk-or-v1"):
+                self.openai_client = OpenAI(
+                    api_key=deepseek_api_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+                self.api_provider = "OpenRouter"
+                self.default_model = "moonshotai/kimi-k2:free"
+                logger.info("OpenRouter client initialized successfully with Kimi model (using DEEPSEEK_API key)")
+            elif deepseek_api_key and deepseek_api_key.startswith("sk-"):
                 self.openai_client = OpenAI(
                     api_key=deepseek_api_key,
                     base_url="https://api.deepseek.com"
@@ -48,6 +57,14 @@ class RAGEngine:
                 self.api_provider = "DeepSeek"
                 self.default_model = "deepseek-chat"
                 logger.info("DeepSeek client initialized successfully")
+            elif openrouter_api_key:
+                self.openai_client = OpenAI(
+                    api_key=openrouter_api_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+                self.api_provider = "OpenRouter"
+                self.default_model = "moonshotai/kimi-k2:free"
+                logger.info("OpenRouter client initialized successfully with Kimi model")
             elif openai_api_key:
                 self.openai_client = OpenAI(api_key=openai_api_key)
                 self.api_provider = "OpenAI"
@@ -79,9 +96,12 @@ class RAGEngine:
         Generate an intelligent answer based on the query and relevant documents
         """
         try:
-            # Use default model if none specified
-            if llm_model is None:
-                llm_model = getattr(self, 'default_model', 'gpt-4o')
+            # Use default model if none specified - ensure we always have a string
+            if llm_model is None or llm_model == "":
+                llm_model = getattr(self, 'default_model', 'deepseek-chat')
+            
+            # Ensure llm_model is always a string at this point
+            assert isinstance(llm_model, str), f"llm_model must be a string, got {type(llm_model)}"
             
             logger.info(f"Generating answer using model: {llm_model}")
             
