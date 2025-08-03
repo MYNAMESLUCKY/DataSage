@@ -40,23 +40,28 @@ class RAGEngine:
             openrouter_api_key = os.getenv("OPENROUTER_API")
             openai_api_key = os.getenv("OPENAI_API_KEY")
             
-            # The DEEPSEEK_API key is actually an OpenRouter key based on its format
-            if deepseek_api_key and deepseek_api_key.startswith("sk-or-v1"):
-                self.openai_client = OpenAI(
-                    api_key=deepseek_api_key,
-                    base_url="https://openrouter.ai/api/v1"
-                )
-                self.api_provider = "OpenRouter"
-                self.default_model = "moonshotai/kimi-k2:free"
-                logger.info("OpenRouter client initialized successfully with Kimi model (using DEEPSEEK_API key)")
-            elif deepseek_api_key and deepseek_api_key.startswith("sk-"):
-                self.openai_client = OpenAI(
-                    api_key=deepseek_api_key,
-                    base_url="https://api.deepseek.com"
-                )
-                self.api_provider = "DeepSeek"
-                self.default_model = "deepseek-chat"
-                logger.info("DeepSeek client initialized successfully")
+            # Try DeepSeek native API first (more reliable than OpenRouter free tier)
+            if deepseek_api_key:
+                try:
+                    # First try as native DeepSeek API
+                    self.openai_client = OpenAI(
+                        api_key=deepseek_api_key,
+                        base_url="https://api.deepseek.com"
+                    )
+                    self.api_provider = "DeepSeek"
+                    self.default_model = "deepseek-chat"
+                    logger.info("DeepSeek client initialized successfully")
+                except Exception as e:
+                    logger.warning(f"DeepSeek API failed: {e}, trying OpenRouter...")
+                    # Fallback to OpenRouter if DeepSeek fails
+                    if deepseek_api_key.startswith("sk-or-v1"):
+                        self.openai_client = OpenAI(
+                            api_key=deepseek_api_key,
+                            base_url="https://openrouter.ai/api/v1"
+                        )
+                        self.api_provider = "OpenRouter"
+                        self.default_model = "deepseek-chat"  # Use DeepSeek model on OpenRouter
+                        logger.info("OpenRouter client initialized with DeepSeek model")
             elif openrouter_api_key:
                 self.openai_client = OpenAI(
                     api_key=openrouter_api_key,
