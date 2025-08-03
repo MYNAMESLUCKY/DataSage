@@ -35,19 +35,16 @@ class RAGEngine:
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Initialize AI client with priority: DeepSeek > OpenRouter > OpenAI
-            deepseek_api_key = os.getenv("DEEPSEEK_API")
-            openrouter_api_key = os.getenv("OPENROUTER_API")
+            # Initialize AI client with priority: OpenAI > OpenRouter > DeepSeek (temporarily until DeepSeek key is fixed)
             openai_api_key = os.getenv("OPENAI_API_KEY")
+            openrouter_api_key = os.getenv("OPENROUTER_API")
+            deepseek_api_key = os.getenv("DEEPSEEK_API")
             
-            if deepseek_api_key:
-                self.openai_client = OpenAI(
-                    api_key=deepseek_api_key,
-                    base_url="https://api.deepseek.com"
-                )
-                self.api_provider = "DeepSeek"
-                self.default_model = "deepseek-chat"
-                logger.info("DeepSeek client initialized successfully")
+            if openai_api_key:
+                self.openai_client = OpenAI(api_key=openai_api_key)
+                self.api_provider = "OpenAI"
+                self.default_model = "gpt-4o"
+                logger.info("OpenAI client initialized successfully")
             elif openrouter_api_key:
                 self.openai_client = OpenAI(
                     api_key=openrouter_api_key,
@@ -61,8 +58,16 @@ class RAGEngine:
                 self.api_provider = "OpenAI"
                 self.default_model = "gpt-4o"
                 logger.info("OpenAI client initialized successfully")
+            elif deepseek_api_key:
+                self.openai_client = OpenAI(
+                    api_key=deepseek_api_key,
+                    base_url="https://api.deepseek.com"
+                )
+                self.api_provider = "DeepSeek"
+                self.default_model = "deepseek-chat"
+                logger.info("DeepSeek client initialized successfully")
             else:
-                logger.warning("No API key found (DeepSeek, OpenRouter, or OpenAI). AI models will not be available.")
+                logger.warning("No API key found (OpenAI, OpenRouter, or DeepSeek). AI models will not be available.")
             
             self.is_ready = True
             logger.info("RAG Engine initialized successfully")
