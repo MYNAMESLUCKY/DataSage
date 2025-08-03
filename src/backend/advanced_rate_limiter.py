@@ -23,25 +23,25 @@ class AdvancedRateLimiter:
         self.request_history: Dict[str, List[float]] = {}
         self.lock = Lock()
         
-        # Optimized rate limiting configurations balancing accuracy with limits
+        # Conservative rate limiting configurations to avoid 429 errors
         self.configs = {
             "simple": {
-                "max_requests_per_minute": 25,  # Increased for better throughput
-                "initial_backoff": 2,
-                "max_backoff": 20,  # Reduced for faster recovery
-                "backoff_multiplier": 2
+                "max_requests_per_minute": 8,  # More conservative for SARVAM API
+                "initial_backoff": 5,  # Longer initial wait
+                "max_backoff": 60,  # Reasonable max wait
+                "backoff_multiplier": 2.5
             },
             "complex": {
-                "max_requests_per_minute": 12,  # Increased for better accuracy
-                "initial_backoff": 3,  # Reduced initial delay
-                "max_backoff": 60,  # Reduced max delay
-                "backoff_multiplier": 2.5  # Less aggressive
+                "max_requests_per_minute": 4,  # Very conservative for complex queries
+                "initial_backoff": 10,  # Longer initial delay
+                "max_backoff": 120,  # Longer max delay
+                "backoff_multiplier": 3
             },
-            "quantum_physics": {  # Optimized for high-level questions
-                "max_requests_per_minute": 8,  # Doubled for better processing
-                "initial_backoff": 5,  # Reduced initial delay
-                "max_backoff": 90,  # Reduced max delay
-                "backoff_multiplier": 3  # Less aggressive
+            "quantum_physics": {  # Very conservative for intensive queries
+                "max_requests_per_minute": 2,  # Minimal requests to avoid overload
+                "initial_backoff": 15,  # Long initial delay
+                "max_backoff": 300,  # Up to 5 minutes max
+                "backoff_multiplier": 4  # Aggressive backoff
             }
         }
         
@@ -136,6 +136,16 @@ class AdvancedRateLimiter:
         with self.lock:
             self.consecutive_failures += 1
             self.last_failure_time = time.time()
+            
+            # Clear request history for this category to slow down future requests
+            category = self.categorize_query(query, processing_time, token_count)
+            logger.warning(f"Rate limit failure recorded for {category} category. Consecutive failures: {self.consecutive_failures}")
+            
+            # If we've failed multiple times, drastically reduce request rate
+            if self.consecutive_failures >= 3:
+                # Clear all request histories to force longer waits
+                self.request_history = {cat: [] for cat in self.request_history.keys()}
+                logger.warning(f"Multiple consecutive failures ({self.consecutive_failures}). Clearing request history to reduce rate.")
     
     def record_success(self, query: str, processing_time: Optional[float] = None, token_count: Optional[int] = None):
         """Record a successful request to reset failure counters"""
@@ -214,12 +224,21 @@ def rate_limited_api_call(
                 
                 if attempt < max_retries - 1:
                     backoff_time = rate_limiter.get_backoff_time(query, attempt + 1, processing_time, token_count)
-                    logger.info(f"Rate limit hit. Performance-based backoff: {backoff_time:.2f}s (attempt {attempt + 1}/{max_retries})")
+                    # Add additional delay for 429 errors to be more conservative
+                    backoff_time *= (1.5 + attempt * 0.5)  # Increase delay with each attempt
+                    logger.warning(f"Rate limit (429) hit. Aggressive backoff: {backoff_time:.2f}s (attempt {attempt + 1}/{max_retries})")
                     time.sleep(backoff_time)
                     continue
                 else:
                     logger.error(f"All {max_retries} attempts exhausted due to rate limiting")
-                    raise e
+                    # Return a valid response instead of raising exception
+                    return {
+                        "answer": "The AI service is currently experiencing high demand. Please try again in a few minutes.",
+                        "confidence": 0.0,
+                        "status": "rate_limited",
+                        "model_used": "none",
+                        "api_provider": "none"
+                    }
             else:
                 logger.error(f"Non-rate-limit error on attempt {attempt + 1}: {error_str}")
                 raise e
