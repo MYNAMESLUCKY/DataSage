@@ -153,7 +153,7 @@ class EnhancedCacheManager:
             logger.error(f"Cache cleanup failed: {e}")
     
     def cache_query_result(self, query: str, result: Dict[str, Any], 
-                          parameters: Dict[str, Any] = None, ttl: int = None) -> bool:
+                          parameters: Optional[Dict[str, Any]] = None, ttl: Optional[int] = None) -> bool:
         """Cache a complete query result"""
         try:
             query_hash = self._generate_query_hash(query, parameters)
@@ -182,7 +182,7 @@ class EnhancedCacheManager:
             logger.error(f"Failed to cache query result: {e}")
             return False
     
-    def get_cached_query_result(self, query: str, parameters: Dict[str, Any] = None) -> Optional[Dict[str, Any]]:
+    def get_cached_query_result(self, query: str, parameters: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
         """Retrieve cached query result"""
         try:
             query_hash = self._generate_query_hash(query, parameters)
@@ -207,17 +207,17 @@ class EnhancedCacheManager:
                     
                     # Deserialize and return result
                     result = pickle.loads(result_data)
-                    self.cache_stats["query_hits"] += 1
+                    self.cache_stats["query_hits"] = int(self.cache_stats["query_hits"]) + 1
                     logger.debug(f"Query cache HIT for: {query[:50]}...")
                     return result
                 else:
-                    self.cache_stats["query_misses"] += 1
+                    self.cache_stats["query_misses"] = int(self.cache_stats["query_misses"]) + 1
                     logger.debug(f"Query cache MISS for: {query[:50]}...")
                     return None
                     
         except Exception as e:
             logger.error(f"Failed to retrieve cached query result: {e}")
-            self.cache_stats["query_misses"] += 1
+            self.cache_stats["query_misses"] = int(self.cache_stats["query_misses"]) + 1
             return None
     
     def cache_embedding(self, content: str, embedding: List[float], model: str = "default") -> bool:
@@ -325,9 +325,9 @@ class EnhancedCacheManager:
             total_embedding = stats["embedding_hits"] + stats["embedding_misses"]
             total_reranking = stats["reranking_hits"] + stats["reranking_misses"]
             
-            stats["query_hit_rate"] = stats["query_hits"] / total_query if total_query > 0 else 0
-            stats["embedding_hit_rate"] = stats["embedding_hits"] / total_embedding if total_embedding > 0 else 0
-            stats["reranking_hit_rate"] = stats["reranking_hits"] / total_reranking if total_reranking > 0 else 0
+            stats["query_hit_rate"] = int(stats["query_hits"]) / total_query if total_query > 0 else 0
+            stats["embedding_hit_rate"] = int(stats["embedding_hits"]) / total_embedding if total_embedding > 0 else 0
+            stats["reranking_hit_rate"] = int(stats["reranking_hits"]) / total_reranking if total_reranking > 0 else 0
             
             # Get database sizes
             with sqlite3.connect(self.query_cache_db) as conn:

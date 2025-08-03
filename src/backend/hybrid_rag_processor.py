@@ -171,20 +171,26 @@ class HybridRAGProcessor:
                         logger.error(f"Web search failed: {e}")
                         web_results = []
                 
-                # Process web results into documents
+                # Process web results into documents with safe attribute access
                 for result in web_results:
+                    # Safely extract attributes with fallbacks
+                    title = str(getattr(result, 'title', 'Web Result'))
+                    content = str(getattr(result, 'content', ''))
+                    url = str(getattr(result, 'url', ''))
+                    score = float(getattr(result, 'score', 0.0))
+                    
                     web_doc = Document(
-                        page_content=f"Title: {result.title}\n\nContent: {result.content}",
+                        page_content=f"Title: {title}\n\nContent: {content}",
                         metadata={
-                            "source": result.url,
-                            "title": result.title,
+                            "source": url,
+                            "title": title,
                             "type": "web_data",
-                            "score": result.score
+                            "score": score
                         }
                     )
                     web_docs.append(web_doc)
                 
-                web_sources = [{"url": r.url, "title": r.title, "score": r.score} for r in web_results]
+                web_sources = [{"url": str(getattr(r, 'url', '')), "title": str(getattr(r, 'title', '')), "score": float(getattr(r, 'score', 0.0))} for r in web_results]
             
             # STEP 3: Intelligent decision making
             strategy_used = ""

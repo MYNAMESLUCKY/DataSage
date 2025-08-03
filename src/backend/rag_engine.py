@@ -246,19 +246,38 @@ Please provide your answer in JSON format:
                         "api_provider": self.api_provider
                     }
                 
-                # Additional safety check for message content
-                message = response.choices[0].message
-                if not message or not hasattr(message, 'content'):
+                # Comprehensive safety checks for message content
+                try:
+                    choice = response.choices[0]
+                    if not choice:
+                        raise Exception("Response choice is None")
+                    
+                    message = choice.message
+                    if not message:
+                        raise Exception("Message object is None")
+                    
+                    if not hasattr(message, 'content'):
+                        raise Exception("Message missing content attribute")
+                    
+                    content = message.content
+                    if not content:
+                        raise Exception("Message content is None")
+                        
+                    if not content.strip():
+                        raise Exception("Message content is empty")
+                        
+                except Exception as content_error:
+                    logger.error(f"API response structure error: {content_error}")
                     return {
-                        "answer": "API response missing message content", 
+                        "answer": f"API response validation failed: {str(content_error)}", 
                         "confidence": 0.0,
                         "status": "error",
                         "model_used": model,
                         "api_provider": self.api_provider
                     }
                 
-                content = message.content
-                if content:
+                # Process valid content
+                if content and content.strip():
                     # Handle response based on model type
                     if model.startswith("sarvam"):
                         # SARVAM models return plain text, use directly
