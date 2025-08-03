@@ -266,24 +266,52 @@ class HybridRAGProcessor:
                     llm_model=llm_model
                 )
                 
-                # Check if result indicates failure but we have documents
-                if (result.get('status') == 'error' and final_docs and 
+                # Check if result indicates failure - use Tavily instead of KB
+                if (result.get('status') == 'error' and 
                     'rate limit' in result.get('answer', '').lower()):
                     
-                    logger.warning("API failed but we have relevant documents - forcing fallback answer")
+                    logger.warning("API rate limited - switching to Tavily web search")
                     
-                    # Force generate answer using knowledge base
-                    context = self.rag_engine._prepare_context(final_docs)
-                    fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
-                    
-                    result = {
-                        'answer': fallback_result['answer'],
-                        'confidence': fallback_result['confidence'],
-                        'status': 'success_fallback',
-                        'model_used': f"{llm_model} (knowledge base fallback)",
-                        'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
-                        'fallback_reason': 'Rate limit exceeded - used knowledge base data'
-                    }
+                    try:
+                        # Use Tavily for fresh information instead of KB
+                        tavily_result = self.rag_engine._generate_tavily_fallback_answer(query)
+                        
+                        result = {
+                            'answer': tavily_result['answer'],
+                            'confidence': tavily_result['confidence'],
+                            'status': 'success_tavily_fallback',
+                            'model_used': f"{llm_model} (Tavily web search)",
+                            'sources': tavily_result.get('sources', []),
+                            'web_sources': tavily_result.get('web_sources', []),
+                            'fallback_reason': 'Rate limit exceeded - used Tavily web search for current information'
+                        }
+                        
+                    except Exception as tavily_error:
+                        logger.warning(f"Tavily fallback failed: {tavily_error}")
+                        
+                        # Only use KB as emergency fallback if we have documents and Tavily fails
+                        if final_docs:
+                            logger.info("Emergency fallback to knowledge base after Tavily failure")
+                            context = self.rag_engine._prepare_context(final_docs)
+                            fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
+                            
+                            result = {
+                                'answer': fallback_result['answer'],
+                                'confidence': fallback_result['confidence'],
+                                'status': 'emergency_kb_fallback',
+                                'model_used': f"{llm_model} (emergency KB after Tavily failure)",
+                                'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
+                                'fallback_reason': f'Rate limit + Tavily failed - emergency KB: {str(tavily_error)}'
+                            }
+                        else:
+                            result = {
+                                'answer': f"I encountered rate limits and couldn't access current web information. Tavily search failed: {str(tavily_error)}",
+                                'confidence': 0.1,
+                                'status': 'complete_fallback_failure',
+                                'model_used': 'None',
+                                'sources': [],
+                                'fallback_reason': f'All fallback methods failed: {str(tavily_error)}'
+                            }
                     
             except Exception as e:
                 logger.error(f"Error in answer generation: {e}")

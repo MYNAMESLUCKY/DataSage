@@ -267,17 +267,32 @@ Please provide your answer in JSON format:
             logger.error(f"API call failed: {e}")
             logger.warning(f"Falling back to knowledge base answer generation")
             
-            # Check if it's a rate limit error and we have context
-            if "rate limit" in str(e).lower() and context.strip():
-                logger.info("Rate limit detected - using enhanced fallback with available knowledge")
-                fallback_result = self._generate_enhanced_fallback_answer(query, context)
-                fallback_result.update({
-                    "model_used": f"{model} (fallback)",
-                    "api_provider": f"{self.api_provider} (fallback)",
-                    "status": "success_fallback",
-                    "fallback_reason": "Rate limit exceeded - used knowledge base"
-                })
-                return fallback_result
+            # Check if it's a rate limit error - use Tavily instead of KB fallback
+            if "rate limit" in str(e).lower():
+                logger.info("Rate limit detected - switching to Tavily web search")
+                try:
+                    # Use Tavily to get fresh information instead of KB fallback
+                    tavily_result = self._generate_tavily_fallback_answer(query)
+                    tavily_result.update({
+                        "model_used": f"{model} (Tavily fallback)",
+                        "api_provider": "Tavily Web Search",
+                        "status": "success_tavily_fallback",
+                        "fallback_reason": "Rate limit exceeded - used Tavily web search"
+                    })
+                    return tavily_result
+                except Exception as tavily_error:
+                    logger.warning(f"Tavily fallback also failed: {tavily_error}")
+                    # Only use KB as last resort if Tavily fails
+                    if context.strip():
+                        logger.info("Using knowledge base as emergency fallback after Tavily failure")
+                        fallback_result = self._generate_enhanced_fallback_answer(query, context)
+                        fallback_result.update({
+                            "model_used": f"{model} (emergency KB fallback)",
+                            "api_provider": f"{self.api_provider} (emergency fallback)",
+                            "status": "emergency_kb_fallback",
+                            "fallback_reason": f"Rate limit + Tavily failed - emergency KB use: {str(tavily_error)}"
+                        })
+                        return fallback_result
             else:
                 # For other errors, try basic fallback
                 fallback_result = self._generate_fallback_answer(query, context)
@@ -398,6 +413,78 @@ Please provide your answer in JSON format:
             'answer': answer,
             'confidence': confidence
         }
+    
+    def _generate_tavily_fallback_answer(self, query: str) -> Dict[str, Any]:
+        """Generate answer using Tavily web search when AI APIs hit rate limits"""
+        
+        try:
+            # Import Tavily integration
+            from .tavily_integration import TavilyIntegrationService
+            
+            logger.info(f"Using Tavily web search for rate-limited query: {query}")
+            
+            # Initialize Tavily service
+            tavily_service = TavilyIntegrationService()
+            
+            # Search for current information
+            search_results = tavily_service.search_web(
+                query=query,
+                max_results=5,
+                include_answer=True,
+                include_raw_content=True
+            )
+            
+            if search_results and hasattr(search_results, 'results') and search_results.results:
+                # Format Tavily results into a comprehensive answer
+                answer_parts = []
+                
+                # Use Tavily's answer if available
+                if hasattr(search_results, 'answer') and search_results.answer:
+                    answer_parts.append("**Current Information from Web Search:**")
+                    answer_parts.append(search_results.answer)
+                    answer_parts.append("")
+                
+                # Add key insights from top results
+                answer_parts.append("**Additional Details:**")
+                for i, result in enumerate(search_results.results[:3], 1):
+                    title = getattr(result, 'title', 'Web Result')
+                    content = getattr(result, 'content', '')
+                    
+                    if content:
+                        # Limit content length
+                        if len(content) > 300:
+                            content = content[:300] + "..."
+                        answer_parts.append(f"{i}. **{title}**")
+                        answer_parts.append(f"   {content}")
+                        answer_parts.append("")
+                
+                answer_parts.append("*This answer was generated using real-time web search due to API rate limits.*")
+                
+                final_answer = "\n".join(answer_parts)
+                
+                return {
+                    'answer': final_answer,
+                    'confidence': 0.85,  # High confidence for fresh web data
+                    'sources': [getattr(r, 'url', '') for r in search_results.results[:5]],
+                    'web_sources': [
+                        {
+                            'url': getattr(r, 'url', ''),
+                            'title': getattr(r, 'title', ''),
+                            'content': getattr(r, 'content', '')[:200] + "..." if len(getattr(r, 'content', '')) > 200 else getattr(r, 'content', '')
+                        } for r in search_results.results[:3]
+                    ]
+                }
+            else:
+                return {
+                    'answer': "I searched the web for current information but didn't find specific results for your query. Please try rephrasing your question or check back later.",
+                    'confidence': 0.3,
+                    'sources': [],
+                    'web_sources': []
+                }
+                
+        except Exception as e:
+            logger.error(f"Tavily fallback search failed: {e}")
+            raise e  # Re-raise to trigger emergency fallback
     
     def _extract_sources(self, relevant_docs: List[Document]) -> List[str]:
         """Extract source information from documents"""
