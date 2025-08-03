@@ -144,6 +144,7 @@ class RAGEngine:
     
     def _generate_ai_answer(self, query: str, context: str, model: str) -> Dict[str, Any]:
         """Generate answer using AI models with intelligent rate limiting"""
+        
         def make_api_call():
             """API call function for rate limiter"""
             if not self.openai_client:
@@ -242,7 +243,10 @@ Please provide your answer in JSON format:
                         # SARVAM models return plain text, use directly
                         return {
                             'answer': content.strip(),
-                            'confidence': 0.8
+                            'confidence': 0.8,
+                            'status': 'success',
+                            'model_used': model,
+                            'api_provider': self.api_provider
                         }
                     else:
                         # Other models may return JSON, try to parse
@@ -250,41 +254,43 @@ Please provide your answer in JSON format:
                             result = json.loads(content)
                             return {
                                 'answer': result.get('answer', content),
-                                'confidence': result.get('confidence', 0.8)
+                                'confidence': result.get('confidence', 0.8),
+                                'status': 'success',
+                                'model_used': model,
+                                'api_provider': self.api_provider
                             }
                         except json.JSONDecodeError:
                             # If JSON parsing fails, use content directly
                             return {
                                 'answer': content.strip(),
-                                'confidence': 0.8
+                                'confidence': 0.8,
+                                'status': 'success',
+                                'model_used': model,
+                                'api_provider': self.api_provider
                             }
                 else:
-                    return {"answer": "No response generated", "confidence": 0.0}
-                    
-            except Exception as e:
-                error_str = str(e)
-                logger.error(f"AI API error (attempt {retry_count + 1}): {error_str}")
-                
-                # Check if this is a rate limit error
-                if "429" in error_str or "rate limit" in error_str.lower():
-                    retry_count += 1
-                    if retry_count < max_retries:
-                        # Progressive backoff: 2s, 8s, 32s for high-level questions
-                        wait_time = min(120, 2 * (4 ** retry_count))  # More aggressive backoff, cap at 2 minutes
-                        logger.info(f"SARVAM API rate limit hit. Implementing smart backoff: {wait_time}s before retry {retry_count + 1}/{max_retries}")
-                        time.sleep(wait_time)
-                        continue
-                    else:
-                        logger.error("All retry attempts exhausted due to rate limiting")
-                        break
-                else:
-                    # Non-rate limit error, don't retry
-                    break
+                    return {
+                        "answer": "No response generated", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+            
+            # Call the API function and return result
+            return make_api_call()
         
-        # If all retries failed, raise the last error
-        if 'error_str' not in locals():
-            error_str = "Unknown error occurred during AI generation"
-        raise Exception(f"Failed to generate AI answer after {max_retries} attempts: {error_str}")
+        try:
+            # Use advanced rate limiter for intelligent backoff
+            return rate_limited_api_call(
+                global_rate_limiter, 
+                query, 
+                make_api_call,
+                max_retries=7  # Increased for complex queries
+            )
+        except Exception as e:
+            logger.error(f"Error generating answer: {e}")
+            return self._generate_fallback_answer(query, context)
     
     def _try_fallback_model(self) -> bool:
         """No fallback models allowed - SARVAM only"""
