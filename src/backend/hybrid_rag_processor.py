@@ -175,9 +175,8 @@ class HybridRAGProcessor:
                 logger.info("STEP 4: Updating knowledge base with new web information...")
                 try:
                     # Add web documents to vector store for future queries
-                    try:
-                        self.vector_store.add_documents(web_docs)
-                        logger.info(f"Added {len(web_docs)} new documents to knowledge base")
+                    self.vector_store.add_documents(web_docs)
+                    logger.info(f"Added {len(web_docs)} new documents to knowledge base")
                     
                 except Exception as e:
                     logger.warning(f"Failed to update knowledge base: {e}")
