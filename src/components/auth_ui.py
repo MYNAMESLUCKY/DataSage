@@ -71,81 +71,87 @@ def show_firebase_google_login():
     firebase_config = get_firebase_web_config()
     
     if firebase_config:
-        # Embed Firebase Web SDK with authentication handling
-        st.markdown(f"""
-        <script type="module">
-        import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-        import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
+        # Create columns for better layout
+        col1, col2, col3 = st.columns([1, 2, 1])
         
-        // Firebase configuration
-        const firebaseConfig = {firebase_config};
-        
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        
-        // Google Sign-In
-        window.signInWithGoogle = async function() {{
-            const provider = new GoogleAuthProvider();
-            provider.addScope('email');
-            provider.addScope('profile');
-            
-            try {{
-                console.log('Starting Google sign-in...');
-                const result = await signInWithPopup(auth, provider);
-                console.log('Sign-in successful:', result.user.email);
+        with col2:
+            # Use Streamlit button instead of HTML button for better compatibility
+            if st.button("🚀 Sign in with Google", 
+                        key="google_login_btn",
+                        help="Click to sign in with your Google account",
+                        use_container_width=True):
                 
-                const idToken = await getIdToken(result.user);
-                console.log('ID token obtained');
+                # Store Firebase config in session state for JavaScript access
+                st.session_state.firebase_config = firebase_config
                 
-                // Store authentication data
-                sessionStorage.setItem('firebase_token', idToken);
-                sessionStorage.setItem('firebase_user', JSON.stringify({{
-                    uid: result.user.uid,
-                    email: result.user.email,
-                    displayName: result.user.displayName,
-                    photoURL: result.user.photoURL
-                }}));
+                # Trigger Firebase authentication
+                st.markdown(f"""
+                <script type="module">
+                import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+                import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
                 
-                // Show success message
-                alert('Sign-in successful! Redirecting...');
+                // Firebase configuration
+                const firebaseConfig = {firebase_config};
                 
-                // Redirect with token
-                const url = new URL(window.location);
-                url.searchParams.set('firebase_token', idToken);
-                window.location.href = url.toString();
+                // Initialize Firebase
+                const app = initializeApp(firebaseConfig);
+                const auth = getAuth(app);
                 
-            }} catch (error) {{
-                console.error('Firebase authentication error:', error);
-                alert('Authentication failed: ' + error.message);
-                
-                // Show detailed error for debugging
-                if (error.code === 'auth/popup-blocked') {{
-                    alert('Please allow popups for this site and try again.');
-                }} else if (error.code === 'auth/popup-closed-by-user') {{
-                    console.log('User cancelled the sign-in');
-                }} else {{
-                    console.error('Detailed error:', error);
+                // Google Sign-In
+                async function signInWithGoogle() {{
+                    const provider = new GoogleAuthProvider();
+                    provider.addScope('email');
+                    provider.addScope('profile');
+                    
+                    try {{
+                        console.log('Starting Google sign-in...');
+                        const result = await signInWithPopup(auth, provider);
+                        console.log('Sign-in successful:', result.user.email);
+                        
+                        const idToken = await getIdToken(result.user);
+                        console.log('ID token obtained');
+                        
+                        // Redirect with token
+                        const url = new URL(window.location);
+                        url.searchParams.set('firebase_token', idToken);
+                        window.location.href = url.toString();
+                        
+                    }} catch (error) {{
+                        console.error('Firebase authentication error:', error);
+                        alert('Authentication failed: ' + error.message);
+                    }}
                 }}
-            }}
-        }}
-        </script>
+                
+                // Auto-trigger sign-in
+                signInWithGoogle();
+                </script>
+                """, unsafe_allow_html=True)
         
-        <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;">
-            <button onclick="signInWithGoogle()" 
-                    style="background-color: #4285f4; color: white; border: none; 
-                           padding: 15px 30px; border-radius: 8px; font-size: 16px; 
-                           cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-                           display: flex; align-items: center; margin: 0 auto;">
-                <svg width="20" height="20" viewBox="0 0 24 24" style="margin-right: 8px;">
-                    <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Sign in with Google
-            </button>
-        </div>
+        # Custom CSS for the button styling
+        st.markdown("""
+        <style>
+        .stButton > button {
+            background: linear-gradient(135deg, #4285f4 0%, #3367d6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 500;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .stButton > button:hover {
+            background: linear-gradient(135deg, #3367d6 0%, #2d5aa0 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+        
+        .stButton > button:active {
+            transform: translateY(0px);
+        }
+        </style>
         """, unsafe_allow_html=True)
         
         # Handle authentication result
