@@ -424,85 +424,42 @@ class RAGSystemApp:
 
     def render_answer_with_copy(self, answer_text: str, unique_id: str):
         """Render answer text with copy functionality"""
-        import hashlib
+        # Answer display with copy button using columns
+        col1, col2 = st.columns([5, 1])
         
-        # Create unique identifier
-        text_id = hashlib.md5(f"{answer_text}_{unique_id}".encode()).hexdigest()[:8]
-        
-        # Display answer in a styled container
-        st.markdown(f"""
-        <div style="
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-left: 4px solid #007bff;
-            padding: 1.2rem;
-            margin: 0.5rem 0;
-            border-radius: 0 8px 8px 0;
-            box-shadow: 0 2px 4px rgba(0,123,255,0.1);
-            position: relative;
-        ">
+        with col1:
+            # Use a styled container for the answer
+            st.markdown(f"""
             <div style="
-                line-height: 1.6;
-                color: #333;
-                font-size: 1rem;
-                white-space: pre-wrap;
-                word-wrap: break-word;
-                margin-bottom: 0.5rem;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-left: 4px solid #007bff;
+                padding: 1.2rem;
+                margin: 0.5rem 0;
+                border-radius: 0 8px 8px 0;
+                box-shadow: 0 2px 4px rgba(0,123,255,0.1);
             ">
-                {answer_text}
+                <div style="
+                    line-height: 1.6;
+                    color: #333;
+                    font-size: 1rem;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                ">
+                    {answer_text}
+                </div>
             </div>
-            <button onclick="copyToClipboard_{text_id}()" style="
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                background: #007bff;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 4px 8px;
-                cursor: pointer;
-                font-size: 12px;
-            " title="Copy to clipboard">📋 Copy</button>
-        </div>
+            """, unsafe_allow_html=True)
         
-        <textarea id="copy-source-{text_id}" style="position: absolute; left: -9999px;" readonly>
-        {answer_text}
-        </textarea>
-        
-        <script>
-        function copyToClipboard_{text_id}() {{
-            const textArea = document.getElementById('copy-source-{text_id}');
-            if (textArea) {{
-                textArea.select();
-                textArea.setSelectionRange(0, 99999);
-                try {{
-                    document.execCommand('copy');
-                    // Show temporary success message
-                    const button = event.target;
-                    const originalText = button.innerHTML;
-                    button.innerHTML = '✅ Copied!';
-                    button.style.background = '#28a745';
-                    setTimeout(() => {{
-                        button.innerHTML = originalText;
-                        button.style.background = '#007bff';
-                    }}, 2000);
-                }} catch (err) {{
-                    if (navigator.clipboard) {{
-                        navigator.clipboard.writeText(textArea.value).then(() => {{
-                            const button = event.target;
-                            const originalText = button.innerHTML;
-                            button.innerHTML = '✅ Copied!';
-                            button.style.background = '#28a745';
-                            setTimeout(() => {{
-                                button.innerHTML = originalText;
-                                button.style.background = '#007bff';
-                            }}, 2000);
-                        }});
-                    }}
-                }}
-            }}
-        }}
-        </script>
-        """, unsafe_allow_html=True)
+        with col2:
+            # Simple copy using text_area for reliable copying
+            copy_text = st.text_area(
+                "Copy text:",
+                value=answer_text,
+                height=100,
+                label_visibility="collapsed",
+                key=f"copy_area_{unique_id}",
+                help="Select all text (Ctrl+A) and copy (Ctrl+C)"
+            )
 
     def process_uploaded_files(self):
         """Process uploaded files"""
