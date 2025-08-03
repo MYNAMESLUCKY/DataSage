@@ -102,8 +102,8 @@ class RAGSystemApp:
         # Header
         st.markdown("""
         <div class="main-header">
-            <h1>🧠 Enterprise RAG System</h1>
-            <p>Intelligent Dataset Querying with Advanced AI</p>
+            <h1>REDCELL AI</h1>
+            <p>Intelligent Dataset Querying with Advanced AI and Self Training Model</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -326,7 +326,7 @@ class RAGSystemApp:
                 st.metric("Processing Status", stats.get('processing_status', 'Unknown'))
             with col3:
                 st.metric("Vector Store", "Ready" if stats.get('vector_store_initialized', False) else "Not Ready")
-        except:
+        finally:
             st.info("System statistics not available")
 
         if st.session_state.data_sources:
