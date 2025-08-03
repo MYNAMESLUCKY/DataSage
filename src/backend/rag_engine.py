@@ -234,40 +234,88 @@ Please provide your answer in JSON format:
                 if not any(model.startswith(prefix) for prefix in ["deepseek", "moonshotai/kimi", "sarvam"]):
                     request_params["response_format"] = {"type": "json_object"}
 
+                # Debug logging before API call
+                logger.debug(f"Making API call with params: {request_params}")
+                
                 response = self.openai_client.chat.completions.create(**request_params)
                 
-                # Check if response is valid before accessing
-                if not response or not response.choices or len(response.choices) == 0:
+                # Enhanced debugging and validation
+                logger.debug(f"API response received: {type(response)}")
+                
+                if response is None:
+                    logger.error("API response is None")
                     return {
-                        "answer": "API returned an empty response", 
+                        "answer": "API returned None response", 
                         "confidence": 0.0,
                         "status": "error",
                         "model_used": model,
                         "api_provider": self.api_provider
                     }
                 
-                # Comprehensive safety checks for message content
+                if not hasattr(response, 'choices'):
+                    logger.error(f"API response missing choices attribute: {response}")
+                    return {
+                        "answer": "API response missing choices", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+                
+                if response.choices is None:
+                    logger.error("API response.choices is None")
+                    return {
+                        "answer": "API response choices is None", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+                
+                if len(response.choices) == 0:
+                    logger.error("API response.choices is empty")
+                    return {
+                        "answer": "API response choices is empty", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+                
+                # Comprehensive safety checks for message content with detailed logging
                 try:
+                    logger.debug(f"Accessing response.choices[0], choices length: {len(response.choices)}")
                     choice = response.choices[0]
-                    if not choice:
+                    logger.debug(f"Choice object: {type(choice)}")
+                    
+                    if choice is None:
                         raise Exception("Response choice is None")
                     
+                    if not hasattr(choice, 'message'):
+                        raise Exception(f"Choice missing message attribute: {choice}")
+                    
                     message = choice.message
-                    if not message:
+                    logger.debug(f"Message object: {type(message)}")
+                    
+                    if message is None:
                         raise Exception("Message object is None")
                     
                     if not hasattr(message, 'content'):
-                        raise Exception("Message missing content attribute")
+                        raise Exception(f"Message missing content attribute: {message}")
                     
                     content = message.content
-                    if not content:
+                    logger.debug(f"Content: {type(content)} - '{content[:50] if content else 'None'}'")
+                    
+                    if content is None:
                         raise Exception("Message content is None")
                         
                     if not content.strip():
                         raise Exception("Message content is empty")
                         
                 except Exception as content_error:
-                    logger.error(f"API response structure error: {content_error}")
+                    logger.error(f"Detailed API response structure error: {content_error}")
+                    logger.error(f"Response type: {type(response)}")
+                    logger.error(f"Response attributes: {dir(response) if response else 'None'}")
                     return {
                         "answer": f"API response validation failed: {str(content_error)}", 
                         "confidence": 0.0,
