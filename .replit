@@ -9,7 +9,7 @@ deploymentTarget = "autoscale"
 run = ["streamlit", "run", "app.py", "--server.port", "5000"]
 
 [workflows]
-runButton = "Enterprise RAG Server"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -20,6 +20,10 @@ author = "agent"
 task = "workflow.run"
 args = "Enterprise RAG Server"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "API Gateway"
+
 [[workflows.workflow]]
 name = "Enterprise RAG Server"
 author = "agent"
@@ -29,6 +33,15 @@ task = "shell.exec"
 args = "streamlit run enterprise_app.py --server.port 5000"
 waitForPort = 5000
 
+[[workflows.workflow]]
+name = "API Gateway"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python api_gateway_standalone.py"
+waitForPort = 8000
+
 [[ports]]
 localPort = 5000
 externalPort = 80
@@ -36,6 +49,10 @@ externalPort = 80
 [[ports]]
 localPort = 5001
 externalPort = 3000
+
+[[ports]]
+localPort = 8000
+externalPort = 8000
 
 [agent]
 integrations = ["flask_supabase==1.0.0"]
