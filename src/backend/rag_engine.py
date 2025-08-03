@@ -318,7 +318,8 @@ Please provide your answer in JSON format:
                     break
         
         # If all retries failed, raise the last error
-        error_str = error_str if 'error_str' in locals() else "Unknown error"
+        if 'error_str' not in locals():
+            error_str = "Unknown error occurred during AI generation"
         raise Exception(f"Failed to generate AI answer after {max_retries} attempts: {error_str}")
     
     def _try_fallback_model(self) -> bool:
