@@ -85,7 +85,7 @@ Respond with JSON format:
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=400  # Reduced for rate limiting optimization
             )
             
             result = response.choices[0].message.content.strip()

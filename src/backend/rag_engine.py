@@ -15,6 +15,7 @@ from openai import OpenAI
 
 from ..utils.utils import setup_logging, cache_result
 from .vector_store import VectorStoreManager
+from .advanced_rate_limiter import global_rate_limiter, rate_limited_api_call
 
 logger = setup_logging(__name__)
 
@@ -142,14 +143,11 @@ class RAGEngine:
         return "\n".join(context_parts)
     
     def _generate_ai_answer(self, query: str, context: str, model: str) -> Dict[str, Any]:
-        """Generate answer using AI models with automatic fallback on rate limits"""
-        max_retries = 3
-        retry_count = 0
-        
-        while retry_count < max_retries:
-            try:
-                if not self.openai_client:
-                    raise Exception("No AI client available")
+        """Generate answer using AI models with intelligent rate limiting"""
+        def make_api_call():
+            """API call function for rate limiter"""
+            if not self.openai_client:
+                raise Exception("No AI client available")
                 
                 # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
                 # do not change this unless explicitly requested by the user
@@ -271,8 +269,9 @@ Please provide your answer in JSON format:
                 if "429" in error_str or "rate limit" in error_str.lower():
                     retry_count += 1
                     if retry_count < max_retries:
-                        wait_time = min(60, 5 * (2 ** retry_count))  # Cap at 60 seconds
-                        logger.info(f"SARVAM API rate limit hit. Waiting {wait_time}s before retry {retry_count + 1}")
+                        # Progressive backoff: 2s, 8s, 32s for high-level questions
+                        wait_time = min(120, 2 * (4 ** retry_count))  # More aggressive backoff, cap at 2 minutes
+                        logger.info(f"SARVAM API rate limit hit. Implementing smart backoff: {wait_time}s before retry {retry_count + 1}/{max_retries}")
                         time.sleep(wait_time)
                         continue
                     else:
