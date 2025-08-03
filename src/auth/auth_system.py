@@ -32,7 +32,12 @@ class User:
 class AuthenticationSystem:
     """Secure authentication system with JWT tokens and rate limiting"""
     
-    def __init__(self, db_path: str = "auth.db"):
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Create data directory if it doesn't exist
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
+            os.makedirs(data_dir, exist_ok=True)
+            db_path = os.path.join(data_dir, 'users.db')
         self.db_path = db_path
         self.jwt_secret = os.getenv("JWT_SECRET", secrets.token_urlsafe(32))
         self.token_expiry_hours = 24
