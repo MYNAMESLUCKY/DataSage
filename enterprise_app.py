@@ -9,7 +9,7 @@ import os
 # Add src to path
 sys.path.append('src')
 
-from src.components.auth_ui import require_authentication, show_admin_panel, show_security_info, protected_page
+from src.components.auth_ui import show_login_page, show_admin_panel, show_security_info, protected_page
 from src.components.enterprise_ui import EnterpriseUI
 from src.auth.auth_system import UserRole
 from src.security.rate_limiter import rate_limit, RateLimitType
@@ -146,10 +146,17 @@ setInterval(function() {
 def main():
     """Main application entry point"""
     
-    # Authentication requirement
-    require_authentication()
+    # Initialize authentication session
+    from src.auth.auth_system import init_auth_session, check_authentication
+    init_auth_session()
     
-    # Header
+    # Check if user is authenticated
+    if not check_authentication():
+        # Show login page if not authenticated
+        show_login_page()
+        return
+    
+    # Header for authenticated users
     st.markdown("""
     <div class="main-header">
         <h1>🏢 Enterprise RAG System</h1>
