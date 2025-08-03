@@ -268,12 +268,59 @@ async def create_token(user_id: str, role: str = "user"):
     access_token = create_access_token(token_data)
     return {"access_token": access_token, "token_type": "bearer"}
 
+async def verify_api_key(credentials: HTTPAuthorizationCredentials = Security(security)) -> Dict[str, Any]:
+    """Verify API key or JWT token"""
+    try:
+        token = credentials.credentials
+        
+        # Check if it's an API key (starts with 'rag_')
+        if token.startswith('rag_'):
+            # Import API key manager
+            from api.key_management import key_manager
+            api_key_info = key_manager.validate_api_key(token)
+            
+            if api_key_info:
+                return {
+                    "sub": api_key_info.user_id,
+                    "role": "user",
+                    "api_key_id": api_key_info.key_id,
+                    "scope": api_key_info.scope.value,
+                    "auth_type": "api_key"
+                }
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid API key"
+                )
+        else:
+            # Handle as JWT token
+            payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+            user_id = payload.get("sub")
+            if user_id is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid authentication token"
+                )
+            return {**payload, "auth_type": "jwt"}
+            
+    except jwt.PyJWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication token"
+        )
+    except Exception as e:
+        logger.error(f"Authentication error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication failed"
+        )
+
 @app.post("/query", response_model=QueryResponse)
 async def query_knowledge_base(
     request: QueryRequest,
     background_tasks: BackgroundTasks,
     http_request: Request,
-    user: Dict[str, Any] = Depends(verify_token)
+    user: Dict[str, Any] = Depends(verify_api_key)
 ):
     """Query the knowledge base with intelligent RAG processing"""
     await rate_limit_check(http_request)
@@ -320,7 +367,7 @@ async def query_knowledge_base(
 async def ingest_data(
     request: DataIngestionRequest,
     background_tasks: BackgroundTasks,
-    user: Dict[str, Any] = Depends(verify_token)
+    user: Dict[str, Any] = Depends(verify_api_key)
 ):
     """Ingest new data into the knowledge base"""
     try:
@@ -339,7 +386,7 @@ async def ingest_data(
         raise HTTPException(status_code=500, detail=f"Data ingestion failed: {str(e)}")
 
 @app.get("/stats")
-async def get_system_stats(user: Dict[str, Any] = Depends(verify_token)):
+async def get_system_stats(user: Dict[str, Any] = Depends(verify_api_key)):
     """Get system statistics and metrics"""
     return {
         "total_documents": rag_system.document_count,
@@ -351,7 +398,7 @@ async def get_system_stats(user: Dict[str, Any] = Depends(verify_token)):
     }
 
 @app.get("/models")
-async def list_available_models(user: Dict[str, Any] = Depends(verify_token)):
+async def list_available_models(user: Dict[str, Any] = Depends(verify_api_key)):
     """List available AI models"""
     return {
         "models": [
@@ -373,7 +420,7 @@ async def list_available_models(user: Dict[str, Any] = Depends(verify_token)):
     }
 
 @app.delete("/cache")
-async def clear_cache(user: Dict[str, Any] = Depends(verify_token)):
+async def clear_cache(user: Dict[str, Any] = Depends(verify_api_key)):
     """Clear system cache (admin only)"""
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
