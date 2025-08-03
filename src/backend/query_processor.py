@@ -54,7 +54,7 @@ class AdvancedQueryProcessor:
         except Exception as e:
             logger.error(f"Failed to initialize query processor: {e}")
     
-    def generate_query_rewrites(self, original_query: str, num_rewrites: int = 5) -> List[str]:
+    def generate_query_rewrites(self, original_query: str, num_rewrites: int = 3) -> List[str]:
         """
         Generate multiple query rewrites for improved retrieval
         Azure AI Search reports 147ms for 10 rewrites, we target 5 for balance

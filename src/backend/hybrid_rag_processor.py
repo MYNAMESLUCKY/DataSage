@@ -42,7 +42,7 @@ class HybridRAGProcessor:
         query: str, 
         llm_model: Optional[str] = None,
         use_web_search: bool = True,
-        max_web_results: int = 5,
+        max_web_results: int = 3,
         **kwargs
     ) -> Dict[str, Any]:
         """

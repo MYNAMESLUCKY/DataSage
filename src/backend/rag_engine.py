@@ -271,15 +271,12 @@ Please provide your answer in JSON format:
                 if "429" in error_str or "rate limit" in error_str.lower():
                     retry_count += 1
                     if retry_count < max_retries:
-                        logger.info(f"Rate limit hit, trying fallback model (attempt {retry_count + 1})")
-                        # Try fallback model if available
-                        if self._try_fallback_model():
-                            continue
-                        else:
-                            time.sleep(2 ** retry_count)  # Exponential backoff
-                            continue
+                        wait_time = min(60, 5 * (2 ** retry_count))  # Cap at 60 seconds
+                        logger.info(f"SARVAM API rate limit hit. Waiting {wait_time}s before retry {retry_count + 1}")
+                        time.sleep(wait_time)
+                        continue
                     else:
-                        logger.error("All retry attempts exhausted")
+                        logger.error("All retry attempts exhausted due to rate limiting")
                         break
                 else:
                     # Non-rate limit error, don't retry
