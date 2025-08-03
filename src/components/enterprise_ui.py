@@ -426,14 +426,25 @@ class EnterpriseUI:
                 # Show answer with enhanced formatting and copy functionality
                 st.subheader("💡 Answer")
                 
+                # Debug the result structure
+                st.write("**Debug Info:**")
+                st.json({
+                    "result_type": str(type(result)),
+                    "result_keys": list(result.keys()) if isinstance(result, dict) else "Not a dict",
+                    "answer_key_exists": "answer" in result if isinstance(result, dict) else False
+                })
+                
                 # Ensure answer is not empty or malformed
                 answer_text = result.get('answer', '').strip()
                 if not answer_text:
                     st.error("❌ Empty answer received from AI model")
+                    st.write("**Full result:**")
+                    st.json(result)
                     return
                 
                 # Debug info for troubleshooting
-                st.caption(f"Answer length: {len(answer_text)} characters")
+                st.caption(f"Answer type: {type(answer_text)} | Length: {len(answer_text)} characters")
+                st.caption(f"Answer preview: {answer_text[:100]}...")
                 
                 self._render_answer_with_copy(answer_text, f"enhanced_{int(time.time())}")
                 
