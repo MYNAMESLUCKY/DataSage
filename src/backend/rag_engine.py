@@ -277,49 +277,7 @@ Please provide your answer in JSON format:
                         "api_provider": self.api_provider
                     }
             
-            # Direct API call within rate limiter
-            response = self.openai_client.chat.completions.create(**request_params)
-            
-            content = response.choices[0].message.content
-            if content:
-                # Handle response based on model type
-                if model.startswith("sarvam"):
-                    # SARVAM models return plain text, use directly
-                    return {
-                        'answer': content.strip(),
-                        'confidence': 0.8,
-                        'status': 'success',
-                        'model_used': model,
-                        'api_provider': self.api_provider
-                    }
-                else:
-                    # Other models may return JSON, try to parse
-                    try:
-                        result = json.loads(content)
-                        return {
-                            'answer': result.get('answer', content),
-                            'confidence': result.get('confidence', 0.8),
-                            'status': 'success',
-                            'model_used': model,
-                            'api_provider': self.api_provider
-                        }
-                    except json.JSONDecodeError:
-                        # If JSON parsing fails, use content directly
-                        return {
-                            'answer': content.strip(),
-                            'confidence': 0.8,
-                            'status': 'success',
-                            'model_used': model,
-                            'api_provider': self.api_provider
-                        }
-            else:
-                return {
-                    "answer": "No response generated", 
-                    "confidence": 0.0,
-                    "status": "error",
-                    "model_used": model,
-                    "api_provider": self.api_provider
-                }
+
         
         try:
             # Use advanced rate limiter for intelligent backoff

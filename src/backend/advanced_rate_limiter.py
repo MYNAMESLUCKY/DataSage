@@ -23,25 +23,25 @@ class AdvancedRateLimiter:
         self.request_history: Dict[str, List[float]] = {}
         self.lock = Lock()
         
-        # Rate limiting configurations for different query types
+        # Optimized rate limiting configurations balancing accuracy with limits
         self.configs = {
             "simple": {
-                "max_requests_per_minute": 20,
+                "max_requests_per_minute": 25,  # Increased for better throughput
                 "initial_backoff": 2,
-                "max_backoff": 30,
+                "max_backoff": 20,  # Reduced for faster recovery
                 "backoff_multiplier": 2
             },
             "complex": {
-                "max_requests_per_minute": 8,  # Lower for complex queries
-                "initial_backoff": 5,
-                "max_backoff": 120,  # Up to 2 minutes
-                "backoff_multiplier": 3  # More aggressive
+                "max_requests_per_minute": 12,  # Increased for better accuracy
+                "initial_backoff": 3,  # Reduced initial delay
+                "max_backoff": 60,  # Reduced max delay
+                "backoff_multiplier": 2.5  # Less aggressive
             },
-            "quantum_physics": {  # Special category for high-level questions
-                "max_requests_per_minute": 4,
-                "initial_backoff": 10,
-                "max_backoff": 180,  # Up to 3 minutes
-                "backoff_multiplier": 4
+            "quantum_physics": {  # Optimized for high-level questions
+                "max_requests_per_minute": 8,  # Doubled for better processing
+                "initial_backoff": 5,  # Reduced initial delay
+                "max_backoff": 90,  # Reduced max delay
+                "backoff_multiplier": 3  # Less aggressive
             }
         }
         
