@@ -50,10 +50,10 @@ class HybridRAGProcessor:
             
             # STEP 1: Check existing knowledge base first
             logger.info("STEP 1: Checking existing knowledge base...")
-            kb_docs = self.enhanced_retrieval.retrieve_documents(
-                query, 
+            kb_docs = self.enhanced_retrieval.enhanced_similarity_search(
                 self.vector_store,
-                max_docs=10,
+                query, 
+                k=10,
                 similarity_threshold=0.2
             )
             
