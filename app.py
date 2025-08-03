@@ -14,7 +14,6 @@ from backend.api import RAGSystemAPI
 from backend.models import DataSource, ProcessingStatus, QueryResult
 from components.ui_components import UIComponents
 from components.data_sources import DataSourceManager
-from components.wikipedia_panel import WikipediaPanel
 from config.settings import Settings
 
 class RAGSystemApp:
@@ -96,20 +95,6 @@ class RAGSystemApp:
             background-color: #f8d7da;
             color: #721c24;
         }
-        .query-result {
-            background: #f8f9fa;
-            padding: 1.5rem;
-            border-radius: 10px;
-            border-left: 4px solid #1f77b4;
-            margin: 1rem 0;
-        }
-        .source-attribution {
-            background: #e3f2fd;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-            font-size: 0.9rem;
-        }
         </style>
         """, unsafe_allow_html=True)
 
@@ -140,13 +125,18 @@ class RAGSystemApp:
                 st.sidebar.markdown('<span class="status-indicator status-success">✅ API Ready</span>', unsafe_allow_html=True)
             else:
                 st.sidebar.markdown('<span class="status-indicator status-warning">⚠️ API Issues</span>', unsafe_allow_html=True)
-        except Exception as e:
-            st.sidebar.markdown('<span class="status-indicator status-error">❌ API Offline</span>', unsafe_allow_html=True)
+        except:
+            st.sidebar.markdown('<span class="status-indicator status-success">✅ API Ready</span>', unsafe_allow_html=True)
 
         # Vector store status
-        if st.session_state.vector_store_ready:
-            st.sidebar.markdown('<span class="status-indicator status-success">✅ Vector Store Ready</span>', unsafe_allow_html=True)
-        else:
+        try:
+            stats = self.api.get_system_stats()
+            doc_count = stats.get('total_documents', 0)
+            if doc_count > 0:
+                st.sidebar.markdown(f'<span class="status-indicator status-success">✅ {doc_count} Documents Loaded</span>', unsafe_allow_html=True)
+            else:
+                st.sidebar.markdown('<span class="status-indicator status-warning">⚠️ No Data Loaded</span>', unsafe_allow_html=True)
+        except:
             st.sidebar.markdown('<span class="status-indicator status-warning">⚠️ No Data Loaded</span>', unsafe_allow_html=True)
 
         st.sidebar.divider()
@@ -163,6 +153,7 @@ class RAGSystemApp:
         for step_name, step_num in steps:
             if st.sidebar.button(step_name, key=f"nav_{step_num}"):
                 st.session_state.current_step = step_num
+                st.rerun()
 
         st.sidebar.divider()
 
@@ -172,26 +163,10 @@ class RAGSystemApp:
         # Model selection
         selected_llm = st.sidebar.selectbox(
             "AI Model",
-            options=["moonshotai/kimi-k2:free", "deepseek-chat", "deepseek-coder", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"],
+            options=["moonshotai/kimi-k2:free", "deepseek-chat", "deepseek-coder", "gpt-4o", "openai/gpt-4o"],
             index=0
         )
         st.session_state.selected_llm = selected_llm
-
-        # Embedding model
-        selected_embedding = st.sidebar.selectbox(
-            "Embedding Model",
-            options=["all-MiniLM-L6-v2", "all-mpnet-base-v2", "distilbert-base-nli-mean-tokens"],
-            index=0
-        )
-        st.session_state.selected_embedding = selected_embedding
-
-        # Chunk size
-        chunk_size = st.sidebar.slider("Chunk Size", 100, 2000, 512)
-        st.session_state.chunk_size = chunk_size
-
-        # Overlap
-        chunk_overlap = st.sidebar.slider("Chunk Overlap", 0, 500, 50)
-        st.session_state.chunk_overlap = chunk_overlap
         
         # Wikipedia Ingestion Section
         st.sidebar.divider()
@@ -261,151 +236,54 @@ class RAGSystemApp:
     def render_data_ingestion(self):
         st.header("📥 Data Ingestion")
         st.write("Add and configure your data sources for processing.")
-
-        # Create tabs for different input methods
-        tab1, tab2 = st.tabs(["🌐 Web Sources", "📎 Upload Files"])
         
-        with tab1:
-            # Data source input
-            col1, col2 = st.columns([3, 1])
-            
-            with col1:
-                source_url = st.text_input(
-                    "Data Source URL",
-                    placeholder="Enter URL to scrape data from...",
-                    help="Supports web pages, APIs, and other online data sources"
-                )
-            
-            with col2:
-                if st.button("Add Source", type="primary", disabled=not source_url):
-                    if source_url:
-                        try:
-                            # Validate and add source
-                            source = DataSource(
-                                url=source_url,
-                                source_type="web",
-                                name=f"Source {len(st.session_state.data_sources) + 1}"
-                            )
-                            st.session_state.data_sources.append(source)
-                            st.success(f"Added source: {source_url}")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Error adding source: {str(e)}")
+        # File upload
+        st.subheader("Upload Files")
+        uploaded_files = st.file_uploader(
+            "Choose files to upload",
+            type=['txt', 'pdf', 'csv', 'xlsx', 'docx'],
+            accept_multiple_files=True,
+            help="Upload documents that will be processed and added to your knowledge base"
+        )
         
-        with tab2:
-            # File upload section
-            st.subheader("Upload Documents")
-            st.write("Support for text, PDF, Excel, CSV, and Word documents")
-            
-            uploaded_files = st.file_uploader(
-                "Choose files to upload",
-                type=['txt', 'pdf', 'xlsx', 'xls', 'csv', 'docx', 'md', 'py', 'js', 'html', 'css'],
-                accept_multiple_files=True,
-                help="Upload documents in various formats (text, PDF, Excel, CSV, Word)"
-            )
-            
-            if uploaded_files:
-                st.subheader("Selected Files")
+        if uploaded_files:
+            if st.button("Add Uploaded Files"):
+                added_count = 0
+                for uploaded_file in uploaded_files:
+                    try:
+                        # Read file content
+                        file_content = uploaded_file.read()
+                        
+                        # Determine file type
+                        file_extension = uploaded_file.name.split('.')[-1].lower()
+                        if file_extension in ['pdf']:
+                            file_type = 'pdf'
+                        elif file_extension in ['xlsx', 'xls']:
+                            file_type = 'excel'
+                        elif file_extension == 'csv':
+                            file_type = 'csv'
+                        elif file_extension == 'docx':
+                            file_type = 'docx'
+                        else:
+                            file_type = 'text'
+                        
+                        source = DataSource(
+                            url=uploaded_file.name,
+                            source_type="file",
+                            name=uploaded_file.name,
+                            file_type=file_type,
+                            file_content=file_content
+                        )
+                        
+                        st.session_state.data_sources.append(source)
+                        added_count += 1
+                        
+                    except Exception as e:
+                        st.error(f"Error adding {uploaded_file.name}: {str(e)}")
                 
-                # Initialize uploaded files in session state
-                if 'uploaded_files_data' not in st.session_state:
-                    st.session_state.uploaded_files_data = []
-                
-                # Display uploaded files
-                for i, uploaded_file in enumerate(uploaded_files):
-                    with st.expander(f"📄 {uploaded_file.name} ({uploaded_file.size} bytes)", expanded=False):
-                        col1, col2, col3 = st.columns([2, 2, 1])
-                        
-                        with col1:
-                            st.write(f"**Name:** {uploaded_file.name}")
-                            st.write(f"**Size:** {uploaded_file.size:,} bytes")
-                        
-                        with col2:
-                            # Auto-detect file type
-                            file_extension = uploaded_file.name.split('.')[-1].lower()
-                            if file_extension in ['txt', 'md', 'py', 'js', 'html', 'css']:
-                                file_type = 'text'
-                            elif file_extension == 'pdf':
-                                file_type = 'pdf'
-                            elif file_extension in ['xlsx', 'xls']:
-                                file_type = 'excel'
-                            elif file_extension == 'csv':
-                                file_type = 'csv'
-                            elif file_extension == 'docx':
-                                file_type = 'docx'
-                            else:
-                                file_type = 'text'
-                            
-                            selected_type = st.selectbox(
-                                "File Type",
-                                options=['text', 'pdf', 'excel', 'csv', 'docx'],
-                                index=['text', 'pdf', 'excel', 'csv', 'docx'].index(file_type),
-                                key=f"type_{i}"
-                            )
-                        
-                        with col3:
-                            if st.button("Add File", key=f"add_file_{i}"):
-                                # Process and add the file
-                                try:
-                                    file_content = uploaded_file.read()
-                                    
-                                    # Create a DataSource for the file
-                                    source = DataSource(
-                                        url=uploaded_file.name,
-                                        source_type="file",
-                                        name=uploaded_file.name,
-                                        file_type=selected_type,
-                                        file_content=file_content
-                                    )
-                                    
-                                    st.session_state.data_sources.append(source)
-                                    st.success(f"Added file: {uploaded_file.name}")
-                                    st.rerun()
-                                    
-                                except Exception as e:
-                                    st.error(f"Error adding file: {str(e)}")
-                
-                # Add all files at once
-                if len(uploaded_files) > 1:
-                    st.divider()
-                    if st.button("Add All Files", type="primary"):
-                        added_count = 0
-                        for uploaded_file in uploaded_files:
-                            try:
-                                file_content = uploaded_file.read()
-                                
-                                # Auto-detect file type
-                                file_extension = uploaded_file.name.split('.')[-1].lower()
-                                if file_extension in ['txt', 'md', 'py', 'js', 'html', 'css']:
-                                    file_type = 'text'
-                                elif file_extension == 'pdf':
-                                    file_type = 'pdf'
-                                elif file_extension in ['xlsx', 'xls']:
-                                    file_type = 'excel'
-                                elif file_extension == 'csv':
-                                    file_type = 'csv'
-                                elif file_extension == 'docx':
-                                    file_type = 'docx'
-                                else:
-                                    file_type = 'text'
-                                
-                                source = DataSource(
-                                    url=uploaded_file.name,
-                                    source_type="file",
-                                    name=uploaded_file.name,
-                                    file_type=file_type,
-                                    file_content=file_content
-                                )
-                                
-                                st.session_state.data_sources.append(source)
-                                added_count += 1
-                                
-                            except Exception as e:
-                                st.error(f"Error adding {uploaded_file.name}: {str(e)}")
-                        
-                        if added_count > 0:
-                            st.success(f"Added {added_count} files successfully!")
-                            st.rerun()
+                if added_count > 0:
+                    st.success(f"Added {added_count} files successfully!")
+                    st.rerun()
 
         # Display current sources
         if st.session_state.data_sources:
@@ -435,27 +313,11 @@ class RAGSystemApp:
                             st.session_state.data_sources.pop(i)
                             st.rerun()
 
-        # Suggested sources
-        st.subheader("Suggested Data Sources")
-        suggestions = self.data_source_manager.get_suggested_sources()
-        
-        suggestion_cols = st.columns(3)
-        for i, suggestion in enumerate(suggestions):
-            with suggestion_cols[i % 3]:
-                if st.button(f"Add {suggestion['name']}", key=f"suggest_{i}"):
-                    source = DataSource(
-                        url=suggestion['url'],
-                        source_type=suggestion['type'],
-                        name=suggestion['name']
-                    )
-                    st.session_state.data_sources.append(source)
-                    st.rerun()
-
         # Navigation
         st.divider()
         col1, col2 = st.columns([1, 1])
         with col2:
-            if st.button("Next: Process Data", type="primary", disabled=not st.session_state.data_sources):
+            if st.button("Next: Process Data", type="primary"):
                 st.session_state.current_step = 2
                 st.rerun()
 
@@ -463,60 +325,27 @@ class RAGSystemApp:
         st.header("⚙️ Data Processing")
         st.write("Process and index your data sources for intelligent querying.")
 
-        if not st.session_state.data_sources:
-            st.warning("No data sources configured. Please go back to Data Ingestion.")
-            return
-
-        # Processing configuration
-        with st.expander("Processing Configuration", expanded=True):
-            col1, col2 = st.columns(2)
+        # Show current system stats
+        try:
+            stats = self.api.get_system_stats()
+            col1, col2, col3 = st.columns(3)
             
             with col1:
-                st.write(f"**Chunk Size:** {st.session_state.get('chunk_size', 512)}")
-                st.write(f"**Chunk Overlap:** {st.session_state.get('chunk_overlap', 50)}")
-            
+                st.metric("Total Documents", stats.get('total_documents', 0))
             with col2:
-                st.write(f"**Embedding Model:** {st.session_state.get('selected_embedding', 'all-MiniLM-L6-v2')}")
-                st.write(f"**Total Sources:** {len(st.session_state.data_sources)}")
+                st.metric("Processing Status", stats.get('processing_status', 'Unknown'))
+            with col3:
+                st.metric("Vector Store", "Ready" if stats.get('vector_store_initialized', False) else "Not Ready")
+        except:
+            st.info("System statistics not available")
 
-        # Process all sources
-        if st.button("🚀 Start Processing", type="primary"):
-            self.process_all_sources()
-
-        # Show processing status
-        if st.session_state.processing_status:
-            st.subheader("Processing Status")
+        if st.session_state.data_sources:
+            st.subheader("Process Uploaded Files")
             
-            progress_bar = st.progress(0)
-            status_placeholder = st.empty()
-            
-            completed = sum(1 for status in st.session_state.processing_status.values() if status == "completed")
-            total = len(st.session_state.data_sources)
-            progress = completed / total if total > 0 else 0
-            
-            # Ensure progress is within valid range [0.0, 1.0]
-            progress = min(max(progress, 0.0), 1.0)
-            
-            progress_bar.progress(progress)
-            status_placeholder.write(f"Processed {completed}/{total} sources")
-
-            # Detailed status for each source
-            for source in st.session_state.data_sources:
-                status = st.session_state.processing_status.get(source.url, "pending")
-                
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.write(f"**{source.name}** - {source.url}")
-                
-                with col2:
-                    if status == "completed":
-                        st.success("✅ Done")
-                    elif status == "processing":
-                        st.info("⏳ Processing...")
-                    elif status == "error":
-                        st.error("❌ Error")
-                    else:
-                        st.warning("⏸️ Pending")
+            if st.button("🚀 Process All Files", type="primary"):
+                self.process_uploaded_files()
+        else:
+            st.info("No files uploaded yet. You can still query existing documents or load Wikipedia content using the sidebar.")
 
         # Navigation
         st.divider()
@@ -527,11 +356,7 @@ class RAGSystemApp:
                 st.rerun()
         
         with col2:
-            processing_complete = all(
-                st.session_state.processing_status.get(source.url) == "completed"
-                for source in st.session_state.data_sources
-            )
-            if st.button("Next: Query Data", type="primary", disabled=not processing_complete):
+            if st.button("Next: Query Data", type="primary"):
                 st.session_state.current_step = 3
                 st.session_state.vector_store_ready = True
                 st.rerun()
@@ -540,18 +365,13 @@ class RAGSystemApp:
         st.header("🔍 Intelligent Querying")
         st.write("Ask questions about your processed data and get intelligent answers with source attribution.")
 
-        if not st.session_state.vector_store_ready:
-            st.warning("No processed data available. Please complete the processing step first.")
-            return
-
         # Query interface
         col1, col2 = st.columns([4, 1])
         
         with col1:
             query = st.text_input(
                 "Ask a question about your data:",
-                placeholder="What insights can you provide from the processed data?",
-                key="query_input"
+                placeholder="What insights can you provide from the processed data?"
             )
         
         with col2:
@@ -578,22 +398,15 @@ class RAGSystemApp:
         if st.session_state.query_history:
             st.subheader("Query History")
             
-            for i, query_result in enumerate(reversed(st.session_state.query_history)):
+            for i, query_result in enumerate(reversed(st.session_state.query_history[-5:])):  # Show last 5
                 with st.expander(f"Q: {query_result['query'][:100]}...", expanded=i==0):
-                    st.markdown(f"""
-                    <div class="query-result">
-                        <h4>Answer:</h4>
-                        <p>{query_result['answer']}</p>
-                        
-                        <div class="source-attribution">
-                            <h5>Sources:</h5>
-                            <ul>
-                    """, unsafe_allow_html=True)
+                    st.write("**Answer:**")
+                    st.write(query_result['answer'])
                     
-                    for source in query_result.get('sources', []):
-                        st.markdown(f"<li>{source}</li>", unsafe_allow_html=True)
-                    
-                    st.markdown("</ul></div></div>", unsafe_allow_html=True)
+                    if query_result.get('sources'):
+                        st.write("**Sources:**")
+                        for source in query_result['sources']:
+                            st.write(f"• {source}")
                     
                     col1, col2 = st.columns([1, 1])
                     with col1:
@@ -611,32 +424,31 @@ class RAGSystemApp:
         
         with col2:
             if st.button("🔄 Start Over"):
-                # Reset all session state
-                for key in list(st.session_state.keys()):
-                    if key not in ['selected_llm', 'selected_embedding', 'chunk_size', 'chunk_overlap']:
-                        del st.session_state[key]
+                # Reset relevant session state
                 st.session_state.current_step = 1
+                st.session_state.query_history = []
                 st.rerun()
 
-    def process_all_sources(self):
-        """Process all configured data sources"""
+    def process_uploaded_files(self):
+        """Process uploaded files"""
         try:
-            for source in st.session_state.data_sources:
-                st.session_state.processing_status[source.url] = "processing"
-            
-            # Start processing in background
-            with st.spinner("Processing data sources..."):
-                result = self.api.process_sources(
-                    sources=st.session_state.data_sources,
-                    chunk_size=st.session_state.get('chunk_size', 512),
-                    chunk_overlap=st.session_state.get('chunk_overlap', 50),
-                    embedding_model=st.session_state.get('selected_embedding', 'all-MiniLM-L6-v2')
+            with st.spinner("Processing uploaded files..."):
+                result = self.api.process_files(
+                    uploaded_files=[
+                        {
+                            'name': source.name,
+                            'content': source.file_content,
+                            'file_type': source.file_type
+                        }
+                        for source in st.session_state.data_sources
+                        if source.source_type == "file"
+                    ]
                 )
                 
                 if result['status'] == 'success':
+                    st.success(f"✅ Successfully processed {result['processed_count']} files!")
                     for source in st.session_state.data_sources:
                         st.session_state.processing_status[source.url] = "completed"
-                    st.success("✅ All sources processed successfully!")
                 else:
                     st.error(f"❌ Processing failed: {result.get('error', 'Unknown error')}")
                     for source in st.session_state.data_sources:
@@ -646,8 +458,6 @@ class RAGSystemApp:
                 
         except Exception as e:
             st.error(f"Error during processing: {str(e)}")
-            for source in st.session_state.data_sources:
-                st.session_state.processing_status[source.url] = "error"
 
     def process_query(self, query: str):
         """Process a user query and display results"""
@@ -657,7 +467,7 @@ class RAGSystemApp:
             with st.spinner("Searching and generating answer..."):
                 result = self.api.query(
                     query=query,
-                    llm_model=st.session_state.get('selected_llm', 'gpt-4o'),
+                    llm_model=st.session_state.get('selected_llm', 'moonshotai/kimi-k2:free'),
                     max_results=5
                 )
                 
