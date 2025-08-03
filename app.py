@@ -458,6 +458,10 @@ class RAGSystemApp:
             use_web_search = st.session_state.get('use_web_search', True)
             
             with st.spinner("🔍 Processing your query..." + (" (with web search)" if use_web_search else "")):
+                # Debug info
+                if use_web_search:
+                    st.info(f"Web search enabled. Tavily available: {web_processor.tavily_service.is_available()}")
+                
                 # Always try web search first if enabled
                 if use_web_search:
                     try:
@@ -468,8 +472,10 @@ class RAGSystemApp:
                             max_web_results=st.session_state.get('max_web_results', 5),
                             prioritize_web=st.session_state.get('prioritize_web', True)
                         )
+                        st.success("Used web-enhanced processing!")
                     except Exception as e:
-                        st.warning(f"Web search failed, using knowledge base only: {str(e)}")
+                        st.error(f"Web search failed: {str(e)}")
+                        st.warning("Falling back to knowledge base only")
                         result = self.api.query(
                             query=query, 
                             llm_model=st.session_state.get('selected_llm', 'sarvam-m')
