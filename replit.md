@@ -1,214 +1,103 @@
 # Overview
 
-This is an Enterprise RAG (Retrieval-Augmented Generation) System built with Streamlit that enables users to ingest data from various online sources, Wikipedia articles, and local documents. The system provides comprehensive knowledge access through intelligent querying with a professional web interface.
+This Enterprise RAG (Retrieval-Augmented Generation) System, built with Streamlit, provides comprehensive knowledge access through intelligent querying via a professional web interface. It enables users to ingest data from various online sources, Wikipedia articles, and local documents, combining a local knowledge base with real-time web search. Key capabilities include:
 
-The application allows users to:
-- Add and configure data sources (web URLs, APIs, files)
-- Upload and process local documents (text, PDF, Excel, CSV, Word)
-- **NEW: Ingest Wikipedia articles at scale** with smart sampling strategies
-- **NEW: Real-time web search integration** using Tavily API for live data retrieval
-- Process and chunk documents for vector storage with ChromaDB
-- Query the processed data using SARVAM API or other AI providers with web-enhanced context
-- Monitor processing status and view query history
-- **Enhanced: Wikipedia integration** with balanced, category-focused, and random sampling modes
-- **Enhanced: Hybrid RAG system** combining local knowledge base with real-time web search
+-   Adding and configuring diverse data sources (web URLs, APIs, files).
+-   Uploading and processing local documents (text, PDF, Excel, CSV, Word).
+-   Ingesting Wikipedia articles at scale with smart sampling strategies (balanced, category-focused, random).
+-   Integrating real-time web search (Tavily API) for live data retrieval.
+-   Processing and chunking documents for vector storage.
+-   Querying processed data using SARVAM API or other AI providers with web-enhanced context.
+-   Monitoring processing status and viewing query history.
+-   Intelligent hybrid RAG features like smart knowledge comparison, automatic knowledge base updates, and enhanced answer quality with specific, detailed responses.
+
+The project aims to deliver a robust, secure, and performant RAG solution for enterprise knowledge management.
 
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-# Enhanced Web Search & Database Caching (Updated 2025-08-03)
+# System Architecture
 
-User has requested comprehensive real-time web search integration with database caching for any question:
-
-## Intelligent Hybrid RAG Features:
-- **Smart Knowledge Comparison**: Checks existing documents first, then compares with live web data
-- **Automatic Knowledge Base Updates**: Adds new web information to vector store when gaps are detected
-- **Enhanced Answer Quality**: Improved prompt engineering provides specific, detailed responses with concrete examples, exact figures, and actionable information
-- **Intelligent Processing Strategies**: 
-  - Hybrid comparison when both KB and web data exist
-  - Knowledge base update when KB lacks information
-  - Fallback to KB-only when web search fails
-- **PostgreSQL database caching** for search results and content optimization
-- **Real-time decision making** for optimal answer generation
-
-## Answer Quality Improvements (Added 2025-08-03):
-- **Specific Details**: Includes program names, exact amounts, percentages, and dates
-- **Concrete Examples**: Real-world cases with specific figures (e.g., "PM-KISAN provides ₹6,000 annually in ₹2,000 installments")
-- **Enhanced Prompting**: System message prioritizes specificity over generality
-- **Structured Responses**: Clear sections with bullet points and numbered lists
-- **Actionable Information**: Implementation details, eligibility criteria, and practical guidance
-
-## 8-Point RAG Improvement Plan - FULLY IMPLEMENTED:
-1. ✅ **Document Chunking Strategy** - Intelligent semantic chunking with content type detection
-2. ✅ **Aggressive Source Filtering** - Quality-based document filtering and relevance scoring  
-3. ✅ **Better Embeddings** - Advanced embedding manager with caching and optimization
-4. ✅ **Enhanced Retrieval Logic** - Multi-strategy search with query expansion
-5. ✅ **Result Reranking** - Intelligent document ranking and relevance scoring
-6. ✅ **Metadata Filtering** - Content type and authority-based filtering
-7. ✅ **Retrieval Pipeline Audit** - Comprehensive monitoring and analytics
-8. ✅ **Search API Fallback** - Wikipedia/DuckDuckGo fallback for missing knowledge
-
-## Production Security Hardening (Added 2025-08-03):
-- ✅ **Demo Accounts Removed** - All demo credentials permanently removed for production security
-- ✅ **Browser Attack Prevention** - Developer tools disabled, right-click blocked, console protected
-- ✅ **Text Selection Control** - Prevents easy content extraction while maintaining input functionality
-- ✅ **UI Security** - Streamlit debug elements hidden, clean production interface
-- ✅ **Admin Account Setup** - Manual secure admin creation process documented
-- ✅ **Comprehensive Documentation** - Complete USER_GUIDE.md and ADMIN_GUIDE.md created
-
-## Firebase-Only Google Authentication Integration (Updated 2025-08-03):
-- ✅ **Firebase Admin SDK** - Server-side Firebase authentication with JWT integration
-- ✅ **Pure Firebase Implementation** - Direct Firebase Web SDK integration (OAuth 2.0 removed)
-- ✅ **Streamlined Authentication** - Firebase Google Login as primary method
-- ✅ **Role Management** - Automatic role assignment (first user = admin, existing users retain roles)
-- ✅ **Local Database Sync** - Firebase users automatically synced with local user database
-- ✅ **Fallback Authentication** - Standard username/password login as backup option
-- ✅ **Security Maintained** - All existing security features preserved with Firebase auth
-- ✅ **JWT Compatibility** - Firebase users receive same JWT tokens as local users
-- ❌ **OAuth 2.0 Removed** - Simplified to use only Firebase authentication methods
-
-## Training System Features:
-- Continuous performance monitoring and improvement recommendations
-- User feedback integration for quality enhancement
-- Query analysis and optimization suggestions
-- Comprehensive training insights and metrics export
-
-# Enterprise Security & Authentication (Updated 2025-08-03)
-
-## Authentication System Features:
-- **JWT-based Authentication**: Secure token-based authentication with configurable expiry
-- **Role-based Access Control**: Admin, User, and Viewer roles with different permissions
-- **Rate Limiting**: Advanced rate limiting for queries, logins, uploads, and API calls
-- **Session Management**: Secure session handling with token validation and automatic cleanup
-- **Password Security**: PBKDF2 hashing with salt for secure password storage
-- **Brute Force Protection**: Automatic blocking after failed login attempts
-- **Database Integration**: SQLite-based user and session management
-
-## Security Features:
-- **Multi-level Rate Limiting**: Different limits for queries (50/hour), logins (5/5min), uploads (10/hour)
-- **IP-based Tracking**: Session tracking and blocking by client identifier
-- **Automatic Cleanup**: Expired sessions and rate limit records automatically cleaned
-- **Admin Controls**: User management, rate limit overrides, and system monitoring
-- **Secure Storage**: All sensitive data encrypted and properly salted
-
-## Enterprise UI Features:
-- **Professional Interface**: Corporate-style design with security badges and status indicators
-- **Role-based Navigation**: Different menu options based on user permissions
-- **Security Dashboard**: Real-time rate limit status and security monitoring
-- **Analytics Integration**: Query performance, system stats, and usage analytics
-- **Settings Management**: User preferences, security settings, and system configuration
-
-# System Architecture (Updated 2025-08-03)
-
-## Clean Project Structure
-```
-├── app.py                    # Main Streamlit application entry point
-├── src/                      # Organized source code directory
-│   ├── backend/             # Core RAG system logic
-│   │   ├── api.py          # Main API orchestrator
-│   │   ├── rag_engine.py   # AI model interactions
-│   │   ├── vector_store_chroma.py # ChromaDB integration
-│   │   ├── data_ingestion.py # Document processing
-│   │   ├── rag_improvements.py # Enhanced retrieval logic
-│   │   └── ...
-│   ├── components/          # UI components and interfaces
-│   │   ├── ui_components.py # Reusable UI elements
-│   │   ├── enterprise_ui.py # Analytics dashboard
-│   │   └── ...
-│   ├── config/             # Configuration management
-│   │   └── settings.py     # System settings
-│   └── utils/              # Shared utilities
-│       └── utils.py        # Logging and performance monitoring
-├── chroma_db/              # Vector database storage
-└── README.md               # Project documentation
-```
+## Project Structure
+The project follows a clean, organized structure with `app.py` as the main entry point. Core logic resides in `src/backend/`, UI components in `src/components/`, configurations in `src/config/`, and utilities in `src/utils/`.
 
 ## Frontend Architecture
-- **Framework**: Streamlit for rapid web application development
-- **UI Pattern**: Multi-step workflow with session state management
-- **Components**: Modular UI components for reusability (status badges, metric cards, data source management)
-- **Styling**: Custom CSS for professional appearance with gradients and responsive design
-- **Visualization**: Plotly integration for metrics and analytics
-- **Copy Functionality**: Simple text area implementation for easy answer copying
+-   **Framework**: Streamlit for rapid web application development.
+-   **UI Pattern**: Multi-step workflow with session state management.
+-   **Components**: Modular UI components for reusability, including status badges, metric cards, and data source management.
+-   **Styling**: Custom CSS for a professional appearance with gradients and responsive design.
+-   **Visualization**: Plotly integration for metrics and analytics.
+-   **Security**: Streamlit debug elements hidden, prevention of text selection, right-click blocking, and console protection for production hardening.
 
 ## Backend Architecture
-- **Pattern**: Service-oriented architecture with clear separation of concerns
-- **Core Services**:
-  - `RAGEngine`: Orchestrates AI model interactions and query processing
-  - `DataIngestionService`: Handles web scraping and document processing
-  - `VectorStoreManager`: Manages ChromaDB vector storage and similarity search
-  - `WikipediaIngestionService`: Specialized service for Wikipedia article ingestion with rate limiting
-  - `TavilyIntegrationService`: Real-time web search integration with content cleaning and processing
-  - `HybridRAGProcessor`: Intelligent processor that compares KB data with web data and updates knowledge base
-  - `WebRAGProcessor`: Legacy processor for web search integration
-  - `WebCacheDatabase`: PostgreSQL-based caching system for web search results and content
-  - `WebCacheUI`: Dashboard for monitoring and managing web search cache
-  - `RAGSystemAPI`: Main API layer that coordinates all services
-  - `EnhancedRetrieval`: Multi-strategy retrieval with intelligent ranking
-  - `AdvancedEmbeddingsManager`: Better embeddings with caching and optimization
-  - `RAGTrainingSystem`: Continuous improvement and performance monitoring
-  - `SearchFallbackService`: External search API integration for missing knowledge
-- **Concurrency**: ThreadPoolExecutor for parallel processing with Wikipedia rate limiting
-- **Error Handling**: Comprehensive logging and graceful failure handling
-- **Clean Architecture**: Organized src/ structure with proper import management
+-   **Pattern**: Service-oriented architecture ensuring clear separation of concerns.
+-   **Core Services**:
+    -   `RAGEngine`: Orchestrates AI model interactions and query processing.
+    -   `DataIngestionService`: Handles web scraping and document processing.
+    -   `VectorStoreManager`: Manages ChromaDB vector storage and similarity search.
+    -   `WikipediaIngestionService`: Specialized service for Wikipedia ingestion with rate limiting.
+    -   `TavilyIntegrationService`: Real-time web search integration with content cleaning.
+    -   `HybridRAGProcessor`: Compares knowledge base data with web data and updates the knowledge base.
+    -   `WebCacheDatabase`: PostgreSQL-based caching for web search results.
+    -   `RAGSystemAPI`: Main API layer coordinating all services.
+    -   `EnhancedRetrieval`: Multi-strategy retrieval with intelligent ranking.
+    -   `AdvancedEmbeddingsManager`: Manages embeddings with caching and optimization.
+    -   `RAGTrainingSystem`: Continuous improvement and performance monitoring.
+    -   `SearchFallbackService`: External search API integration.
+-   **Concurrency**: ThreadPoolExecutor for parallel processing.
+-   **Error Handling**: Comprehensive logging and graceful failure handling.
+-   **Authentication**: JWT-based authentication with configurable expiry, role-based access control (Admin, User, Viewer), multi-level rate limiting, secure session management, PBKDF2 password hashing, and brute-force protection. Firebase-only Google Authentication is integrated, syncing users with a local database.
 
 ## Data Processing Pipeline
-- **Text Extraction**: Uses `trafilatura` and `BeautifulSoup` for web content extraction
-- **Document Chunking**: LangChain's `RecursiveCharacterTextSplitter` for intelligent text segmentation
-- **Embedding Generation**: Sentence Transformers for creating vector representations
-- **Storage**: FAISS for efficient similarity search and retrieval
+-   **Text Extraction**: Utilizes `trafilatura` and `BeautifulSoup` for web content.
+-   **Document Chunking**: LangChain's `RecursiveCharacterTextSplitter` for intelligent segmentation.
+-   **Embedding Generation**: Sentence Transformers for vector representations.
+-   **Storage**: FAISS for efficient similarity search and retrieval during processing.
 
 ## AI Model Integration
-- **Primary**: SARVAM API (sarvam-m) for reliable processing with automatic fallback
-- **Secondary**: DeepSeek API for fast text generation (deepseek-chat, deepseek-coder) as fallback
-- **Tertiary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free) as backup
-- **Final**: Direct OpenAI API support as final backup option
-- **Embeddings**: ChromaDB's built-in embedding models for vector representation
-- **Prompt Engineering**: ChatPromptTemplate for structured AI interactions
-- **Model Selection**: Configurable models including sarvam-m, deepseek-chat, deepseek-coder, moonshotai/kimi-k2:free, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
-- **Wikipedia Integration**: Specialized Wikipedia ingestion service with rate limiting and smart content filtering
+-   **Primary**: SARVAM API (sarvam-m) with automatic fallback.
+-   **Secondary**: DeepSeek API (deepseek-chat, deepseek-coder) for fast generation.
+-   **Tertiary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free).
+-   **Final Backup**: Direct OpenAI API support.
+-   **Embeddings**: ChromaDB's built-in embedding models.
+-   **Prompt Engineering**: ChatPromptTemplate for structured AI interactions.
+-   **Model Selection**: Configurable models including sarvam-m, deepseek-chat, deepseek-coder, moonshotai/kimi-k2:free, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct.
 
 ## Configuration Management
-- **Settings**: Centralized configuration with dataclasses for type safety
-- **Environment Variables**: API keys and sensitive data loaded from environment
-- **Model Selection**: Configurable AI models with fallback mechanisms
+Centralized configuration using dataclasses, with API keys and sensitive data loaded from environment variables.
 
 # External Dependencies
 
 ## AI/ML Services
-- **SARVAM API**: Primary AI service with automatic fallback capabilities (requires API key)
-- **DeepSeek API**: Fast text generation with competitive performance (requires API key)
-- **OpenRouter API**: Multi-provider AI service supporting various models (optional API key)
-- **OpenAI API**: Direct API support as final fallback option (optional API key)
-- **Tavily API**: Real-time web search and content retrieval service (requires API key)
-- **PostgreSQL**: Database for caching web search results and processed content
-- **ChromaDB**: Vector database for embeddings and similarity search
+-   **SARVAM API**: Primary AI service.
+-   **DeepSeek API**: Text generation.
+-   **OpenRouter API**: Multi-provider AI service.
+-   **OpenAI API**: Final fallback AI option.
+-   **Tavily API**: Real-time web search and content retrieval.
+
+## Databases
+-   **PostgreSQL**: For caching web search results and processed content.
+-   **ChromaDB**: Vector database for embeddings and similarity search, with built-in embeddings and persistent storage.
+-   **SQLite**: For user and session management in the authentication system.
 
 ## Document Processing Libraries
-- **PyPDF2**: PDF text extraction and processing
-- **pandas**: CSV and Excel data manipulation and analysis
-- **openpyxl**: Modern Excel (.xlsx) file processing
-- **xlrd**: Legacy Excel (.xls) file support
-- **python-docx**: Word document (.docx) text extraction
-
-## Vector Storage
-- **ChromaDB**: Advanced vector database with built-in embeddings and persistent storage
-- **Default Embeddings**: ChromaDB's built-in embedding models for text vectorization
-- **Cosine Similarity**: High-performance similarity search with ChromaDB's HNSW indexing
-- **Persistent Storage**: Automatic data persistence with ChromaDB's built-in storage layer
+-   **PyPDF2**: PDF text extraction.
+-   **pandas**: CSV and Excel data manipulation.
+-   **openpyxl**: Modern Excel (.xlsx) processing.
+-   **xlrd**: Legacy Excel (.xls) support.
+-   **python-docx**: Word document (.docx) text extraction.
 
 ## Web Scraping & Content Processing
-- **Trafilatura**: Web content extraction and cleaning
-- **BeautifulSoup**: HTML parsing and content extraction
-- **Requests**: HTTP client for web data retrieval
-- **LangChain**: Document processing, text splitting, and RAG orchestration
+-   **Trafilatura**: Web content extraction and cleaning.
+-   **BeautifulSoup**: HTML parsing.
+-   **Requests**: HTTP client for web data retrieval.
+-   **LangChain**: Document processing, text splitting, and RAG orchestration.
 
 ## UI/Visualization
-- **Streamlit**: Web application framework
-- **Plotly**: Interactive charts and visualizations for metrics
+-   **Streamlit**: Web application framework.
+-   **Plotly**: Interactive charts and visualizations.
 
-## Development & Utilities
-- **Logging**: Python standard logging for system monitoring
-- **Concurrent Processing**: ThreadPoolExecutor for parallel operations
-- **Data Models**: Dataclasses and Enums for type-safe data structures
+## Authentication
+-   **Firebase Admin SDK**: Server-side Firebase authentication.
+-   **Firebase Web SDK**: Client-side Firebase authentication.

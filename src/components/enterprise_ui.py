@@ -570,16 +570,6 @@ class EnterpriseUI:
     def _render_answer_with_copy(self, answer_text: str, unique_id: str):
         """Legacy method - redirects to new formatted renderer"""
         self._render_formatted_answer(answer_text, unique_id)
-        
-        with col2:
-            # Copy area for easy text selection
-            st.text_area(
-                "Copy text:",
-                value=answer_text,
-                height=100,
-                key=f"copy_{unique_id}",
-                help="Select all text and copy"
-            )
     
     def render_system_info(self):
         """Render system information and configuration"""
