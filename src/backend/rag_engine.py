@@ -177,7 +177,42 @@ class RAGEngine:
                 # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
                 # do not change this unless explicitly requested by the user
                 
-                prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
+                # Different prompts based on model capabilities
+                if model.startswith("sarvam"):
+                    # SARVAM models work better with plain text prompts
+                    prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
+
+CRITICAL INSTRUCTION: Provide detailed, specific answers with examples, numbers, names, and concrete details. Avoid generic statements. Sources will be listed separately.
+
+Context Information:
+{context}
+
+Question: {query}
+
+Response Guidelines:
+1. **BE SPECIFIC**: Include specific names, programs, schemes, amounts, dates, and concrete details from the context
+2. **PROVIDE EXAMPLES**: Give real examples, case studies, or specific instances mentioned in the documents
+3. **USE NUMBERS**: Include exact figures, percentages, amounts, or quantities when available
+4. **STRUCTURE CLEARLY**: Use clear sections, bullet points, or numbered lists when appropriate
+5. **START WITH KEY POINTS**: Lead with the most important and specific information
+6. **AVOID GENERIC LANGUAGE**: Replace vague terms like "various schemes" with specific scheme names
+7. **INCLUDE PRACTICAL DETAILS**: Add implementation details, eligibility criteria, or application processes if available
+8. **NO SOURCE CITATIONS**: Do NOT include [Source X] or citation markers within your answer text
+9. **FORMATTING**: Use **bold** for key terms and section headers, bullet points for lists
+
+Example of GOOD specific answer style:
+- "The Pradhan Mantri Fasal Bima Yojana provides crop insurance with premium rates of 2% for Kharif crops and 1.5% for Rabi crops"
+- "Under the PM-KISAN scheme, farmers receive ₹6,000 annually in three installments of ₹2,000 each"
+
+Example of BAD generic answer style:
+- "The government offers various schemes to support farmers"
+- "Multiple programs provide financial assistance"
+
+Please provide your answer directly as plain text with clear formatting and structure. Do NOT use JSON format.
+"""
+                else:
+                    # Other models can handle JSON format requests
+                    prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
 
 CRITICAL INSTRUCTION: Provide detailed, specific answers with examples, numbers, names, and concrete details. Avoid generic statements. Sources will be listed separately.
 
@@ -227,19 +262,27 @@ Please provide your answer in JSON format:
                 
                 content = response.choices[0].message.content
                 if content:
-                    # Try to parse JSON if available, otherwise use content directly
-                    try:
-                        result = json.loads(content)
+                    # Handle response based on model type
+                    if model.startswith("sarvam"):
+                        # SARVAM models return plain text, use directly
                         return {
-                            'answer': result.get('answer', content),
-                            'confidence': result.get('confidence', 0.8)
-                        }
-                    except json.JSONDecodeError:
-                        # If JSON parsing fails, use content directly
-                        return {
-                            'answer': content,
+                            'answer': content.strip(),
                             'confidence': 0.8
                         }
+                    else:
+                        # Other models may return JSON, try to parse
+                        try:
+                            result = json.loads(content)
+                            return {
+                                'answer': result.get('answer', content),
+                                'confidence': result.get('confidence', 0.8)
+                            }
+                        except json.JSONDecodeError:
+                            # If JSON parsing fails, use content directly
+                            return {
+                                'answer': content.strip(),
+                                'confidence': 0.8
+                            }
                 else:
                     return {"answer": "No response generated", "confidence": 0.0}
                     
