@@ -3,15 +3,15 @@
 Based on your Firebase config, here's what you need to complete the Google authentication setup:
 
 ## Your Current Firebase Project Details
-- **Project ID**: `eventflow-85373`
-- **Auth Domain**: `eventflow-85373.firebaseapp.com`
-- **App ID**: `1:172157267811:web:df576a4e815f11adf1ad56`
+- **Project ID**: `##################`
+- **Auth Domain**: `#########################`
+- **App ID**: `############################`
 
 ## Required Steps to Enable Google Login
 
 ### 1. Get Service Account Credentials
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your `eventflow-85373` project
+2. Select your `##############` project
 3. Click the gear icon (⚙️) → **Project Settings**
 4. Go to **Service accounts** tab
 5. Click **"Generate new private key"**
@@ -31,7 +31,7 @@ Based on your Firebase config, here's what you need to complete the Google authe
 
 ### 3. Get Google OAuth Credentials
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Select your `eventflow-85373` project
+2. Select your `#############` project
 3. Go to **APIs & Services** → **Credentials**
 4. Click **"Create Credentials"** → **"OAuth 2.0 Client ID"**
 5. Choose **"Web application"**
