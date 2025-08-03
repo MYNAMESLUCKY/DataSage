@@ -53,8 +53,7 @@ class HybridRAGProcessor:
             kb_docs = self.enhanced_retrieval.enhanced_similarity_search(
                 self.vector_store,
                 query, 
-                k=10,
-                similarity_threshold=0.2
+                k=10
             )
             
             kb_has_relevant_data = len(kb_docs) > 0
@@ -176,11 +175,9 @@ class HybridRAGProcessor:
                 logger.info("STEP 4: Updating knowledge base with new web information...")
                 try:
                     # Add web documents to vector store for future queries
-                    texts = [doc.page_content for doc in web_docs]
-                    metadatas = [doc.metadata for doc in web_docs]
-                    
-                    self.vector_store.add_documents(texts, metadatas)
-                    logger.info(f"Added {len(web_docs)} new documents to knowledge base")
+                    try:
+                        self.vector_store.add_documents(web_docs)
+                        logger.info(f"Added {len(web_docs)} new documents to knowledge base")
                     
                 except Exception as e:
                     logger.warning(f"Failed to update knowledge base: {e}")
