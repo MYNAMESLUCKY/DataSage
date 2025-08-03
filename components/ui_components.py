@@ -87,20 +87,58 @@ class UIComponents:
     @staticmethod
     def render_query_result_card(result: Dict[str, Any]):
         """Render a query result with answer and sources"""
-        st.markdown(f"""
-        <div style="
-            background: #f8f9fa;
-            border-left: 4px solid #007bff;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            border-radius: 0 8px 8px 0;
-        ">
-            <h4 style="color: #007bff; margin: 0 0 1rem 0;">Answer</h4>
-            <p style="margin: 0 0 1rem 0; line-height: 1.6;">
-                {result['answer']}
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        answer_text = result['answer']
+        
+        # Create unique key for copy button
+        import hashlib
+        result_id = hashlib.md5(answer_text.encode()).hexdigest()[:8]
+        
+        # Answer container with copy button
+        col1, col2 = st.columns([6, 1])
+        
+        with col1:
+            st.markdown(f"""
+            <div style="
+                background: #f8f9fa;
+                border-left: 4px solid #007bff;
+                padding: 1.5rem;
+                margin: 1rem 0;
+                border-radius: 0 8px 8px 0;
+            ">
+                <h4 style="color: #007bff; margin: 0 0 1rem 0;">Answer</h4>
+                <div id="answer-text-{result_id}" style="margin: 0 0 1rem 0; line-height: 1.6;">
+                    {answer_text}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            # Copy button with JavaScript functionality
+            if st.button("📋 Copy", key=f"copy_{result_id}", help="Copy answer to clipboard"):
+                st.markdown(f"""
+                <script>
+                function copyToClipboard_{result_id}() {{
+                    const text = `{answer_text.replace('`', r'\`').replace('"', r'\"')}`;
+                    navigator.clipboard.writeText(text).then(() => {{
+                        // Show success notification
+                        const button = document.querySelector('[data-testid="stButton"]:has([title="Copy answer to clipboard"])');
+                        if (button) {{
+                            const originalText = button.textContent;
+                            button.style.background = '#28a745';
+                            button.textContent = '✓ Copied!';
+                            setTimeout(() => {{
+                                button.style.background = '';
+                                button.textContent = originalText;
+                            }}, 2000);
+                        }}
+                    }}).catch(err => {{
+                        console.error('Failed to copy text: ', err);
+                    }});
+                }}
+                copyToClipboard_{result_id}();
+                </script>
+                """, unsafe_allow_html=True)
+                st.success("Answer copied to clipboard!", icon="✅")
         
         # Show sources if available
         if result.get('sources'):

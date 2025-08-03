@@ -372,9 +372,9 @@ class EnterpriseUI:
             response_time = time.time() - start_time
             
             if result['status'] == 'success':
-                # Show answer with enhanced formatting
+                # Show answer with enhanced formatting and copy functionality
                 st.subheader("💡 Answer")
-                st.write(result['answer'])
+                self._render_answer_with_copy(result['answer'], f"enhanced_{int(time.time())}")
                 
                 # Show metadata
                 col1, col2, col3, col4 = st.columns(4)
@@ -450,3 +450,67 @@ class EnterpriseUI:
         if hasattr(st.session_state, 'suggested_query'):
             st.info(f"Selected: {st.session_state.suggested_query}")
             del st.session_state.suggested_query
+    
+    def _render_answer_with_copy(self, answer_text: str, unique_id: str):
+        """Render answer text with copy functionality for enterprise UI"""
+        import hashlib
+        
+        # Create unique identifier
+        text_id = hashlib.md5(f"{answer_text}_{unique_id}".encode()).hexdigest()[:8]
+        
+        # Answer display with copy button
+        col1, col2 = st.columns([5, 1])
+        
+        with col1:
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);
+                border-left: 4px solid #2196f3;
+                padding: 1.5rem;
+                margin: 0.5rem 0;
+                border-radius: 0 12px 12px 0;
+                box-shadow: 0 4px 8px rgba(33,150,243,0.15);
+                transition: all 0.3s ease;
+            ">
+                <div style="
+                    line-height: 1.7;
+                    color: #1a1a1a;
+                    font-size: 1rem;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    font-weight: 400;
+                ">
+                    {answer_text}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            if st.button("📋", key=f"copy_enterprise_{text_id}", help="Copy answer to clipboard"):
+                # Create invisible text area for copying
+                st.markdown(f"""
+                <textarea id="copy-enterprise-{text_id}" style="position: absolute; left: -9999px;" readonly>
+                {answer_text}
+                </textarea>
+                <script>
+                    (function() {{
+                        const textArea = document.getElementById('copy-enterprise-{text_id}');
+                        if (textArea) {{
+                            textArea.select();
+                            textArea.setSelectionRange(0, 99999);
+                            try {{
+                                document.execCommand('copy');
+                                console.log('Text copied successfully');
+                            }} catch (err) {{
+                                // Fallback for modern browsers
+                                if (navigator.clipboard) {{
+                                    navigator.clipboard.writeText(textArea.value).then(() => {{
+                                        console.log('Text copied with modern API');
+                                    }}).catch(e => console.error('Copy failed:', e));
+                                }}
+                            }}
+                        }}
+                    }})();
+                </script>
+                """, unsafe_allow_html=True)
+                st.success("✅ Answer copied!", icon="📋")

@@ -335,8 +335,8 @@ class RAGSystemApp:
             
             for i, query_result in enumerate(reversed(st.session_state.query_history[-5:])):  # Show last 5
                 with st.expander(f"Q: {query_result['query'][:100]}...", expanded=i==0):
-                    st.write("**Answer:**")
-                    st.write(query_result['answer'])
+                    # Answer with copy functionality
+                    self.render_answer_with_copy(query_result['answer'], f"history_{i}")
                     
                     if query_result.get('sources'):
                         st.write("**Sources:**")
@@ -397,7 +397,7 @@ class RAGSystemApp:
             
             if result['status'] == 'success':
                 st.subheader("💡 Answer")
-                st.write(result['answer'])
+                self.render_answer_with_copy(result['answer'], "current_query")
                 
                 if result.get('sources'):
                     st.subheader("📖 Sources")
@@ -421,6 +421,61 @@ class RAGSystemApp:
                 
         except Exception as e:
             st.error(f"Error processing query: {str(e)}")
+
+    def render_answer_with_copy(self, answer_text: str, unique_id: str):
+        """Render answer text with copy functionality"""
+        import hashlib
+        
+        # Create unique identifier
+        text_id = hashlib.md5(f"{answer_text}_{unique_id}".encode()).hexdigest()[:8]
+        
+        # Answer display with copy button
+        col1, col2 = st.columns([5, 1])
+        
+        with col1:
+            st.markdown(f"""
+            <div style="
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-left: 4px solid #007bff;
+                padding: 1.2rem;
+                margin: 0.5rem 0;
+                border-radius: 0 8px 8px 0;
+                box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+            ">
+                <div id="answer-content-{text_id}" style="
+                    line-height: 1.6;
+                    color: #333;
+                    font-size: 1rem;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                ">
+                    {answer_text}
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        with col2:
+            if st.button("📋", key=f"copy_btn_{text_id}", help="Copy answer to clipboard"):
+                # Use streamlit's built-in text area for copying
+                st.markdown(f"""
+                <textarea id="copy-text-{text_id}" style="position: absolute; left: -9999px;" readonly>
+                {answer_text}
+                </textarea>
+                <script>
+                    const textArea = document.getElementById('copy-text-{text_id}');
+                    if (textArea) {{
+                        textArea.select();
+                        textArea.setSelectionRange(0, 99999);
+                        try {{
+                            document.execCommand('copy');
+                        }} catch (err) {{
+                            // Fallback for modern browsers
+                            navigator.clipboard.writeText(textArea.value);
+                        }}
+                    }}
+                </script>
+                """, unsafe_allow_html=True)
+                st.success("✅ Copied!", icon="📋")
 
     def process_uploaded_files(self):
         """Process uploaded files"""
