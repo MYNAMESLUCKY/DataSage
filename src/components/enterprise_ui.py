@@ -360,14 +360,44 @@ class EnterpriseUI:
         try:
             start_time = time.time()
             
-            with st.spinner("🔍 Searching knowledge base..."):
-                result = self.api.query(
-                    query=query,
-                    llm_model=model,
-                    max_results=max_results,
-                    similarity_threshold=similarity_threshold,
-                    use_cache=use_cache
-                )
+            # Import and use hybrid processor for intelligent RAG
+            from ..backend.hybrid_rag_processor import HybridRAGProcessor
+            
+            hybrid_processor = HybridRAGProcessor(
+                self.api.vector_store,
+                self.api.rag_engine,
+                self.api.enhanced_retrieval
+            )
+            
+            # Use intelligent hybrid processing with web search
+            use_web_search = st.session_state.get('use_web_search', True)
+            
+            with st.spinner("🧠 Processing with intelligent hybrid RAG..." + (" (comparing KB + web data)" if use_web_search else " (KB only)")):
+                if use_web_search:
+                    result = hybrid_processor.process_intelligent_query(
+                        query=query,
+                        llm_model=model,
+                        use_web_search=True,
+                        max_web_results=max_results
+                    )
+                    
+                    # Show processing strategy used
+                    strategy = result.get('strategy_used', 'unknown')
+                    if strategy == 'hybrid_comparison':
+                        st.success("✅ Compared knowledge base with web data - providing best answer")
+                    elif strategy == 'web_data_with_kb_update':
+                        st.success("✅ Knowledge base updated with new web information")
+                    elif strategy == 'kb_only':
+                        st.info("ℹ️ Used knowledge base only (web search unavailable)")
+                else:
+                    # Fallback to basic processing if web search disabled
+                    result = self.api.query(
+                        query=query,
+                        llm_model=model,
+                        max_results=max_results,
+                        similarity_threshold=similarity_threshold,
+                        use_cache=use_cache
+                    )
             
             response_time = time.time() - start_time
             
@@ -396,11 +426,21 @@ class EnterpriseUI:
                     source_count = len(result.get('sources', []))
                     st.metric("📚 Sources", source_count)
                 
-                # Show sources
+                # Show sources (both KB and web sources)
                 if result.get('sources'):
-                    st.subheader("📖 Sources")
+                    st.subheader("📖 Knowledge Base Sources")
                     for i, source in enumerate(result['sources'], 1):
                         st.write(f"{i}. {source}")
+                
+                # Show web sources separately if available
+                if result.get('web_sources'):
+                    st.subheader("🌐 Web Sources")
+                    for i, web_source in enumerate(result['web_sources'], 1):
+                        st.write(f"{i}. [{web_source['title']}]({web_source['url']}) (Score: {web_source['score']:.2f})")
+                
+                # Show hybrid processing insights
+                if result.get('insights'):
+                    st.info(f"💡 Processing Details: {result['insights']}")
                 
                 # Add to query history
                 if 'enhanced_query_history' not in st.session_state:
