@@ -10,6 +10,11 @@ from typing import Dict, List, Optional, Any
 import logging
 import requests
 import json
+from .modern_ui_styles import (
+    apply_modern_styling, create_metric_card, create_status_badge,
+    create_agent_card, create_notification, create_loading_indicator,
+    create_hero_section, wrap_in_container
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +27,16 @@ class EnterpriseUI:
     
     def render(self):
         """Main render method for the enterprise interface"""
-        # Create tabs for different sections
+        # Apply modern styling
+        apply_modern_styling()
+        
+        # Hero section
+        st.markdown(create_hero_section(
+            "🚀 Enterprise RAG Intelligence Hub",
+            "Advanced AI-powered knowledge discovery and analysis platform with multi-agent collaboration"
+        ), unsafe_allow_html=True)
+        
+        # Create modern tabs with enhanced styling
         tabs = st.tabs(["🔍 Query System", "🤖 Agentic RAG", "📁 File Processing", "🔑 API Keys", "📊 Analytics", "⚙️ System"])
         
         with tabs[0]:
@@ -1504,53 +1518,50 @@ The comprehensive analysis reveals several key dimensions:
             avg_confidence = random.uniform(0.80, 0.95)
             unique_users = random.randint(15, 45)
             
+            # Modern metric cards layout
             kpi_cols = st.columns(5)
             
             with kpi_cols[0]:
-                st.metric(
+                st.markdown(create_metric_card(
                     "📋 Total Queries",
                     f"{total_queries:,}",
-                    delta=f"+{random.randint(5, 25)} from last period",
-                    help="Total queries processed in the selected period"
-                )
+                    f"+{random.randint(5, 25)} from last period"
+                ), unsafe_allow_html=True)
             
             with kpi_cols[1]:
-                st.metric(
+                st.markdown(create_metric_card(
                     "✅ Success Rate",
                     f"{success_rate:.1%}",
-                    delta=f"+{random.uniform(0.5, 2.0):.1f}%",
-                    help="Percentage of successfully processed queries"
-                )
+                    f"+{random.uniform(0.5, 2.0):.1f}%"
+                ), unsafe_allow_html=True)
             
             with kpi_cols[2]:
-                st.metric(
-                    "⚡ Avg Processing Time",
+                st.markdown(create_metric_card(
+                    "⚡ Processing Time",
                     f"{avg_processing_time:.2f}s",
-                    delta=f"-{random.uniform(0.05, 0.2):.2f}s",
-                    delta_color="inverse",
-                    help="Average query processing time"
-                )
+                    f"-{random.uniform(0.05, 0.2):.2f}s",
+                    "inverse"
+                ), unsafe_allow_html=True)
             
             with kpi_cols[3]:
-                st.metric(
-                    "🎯 Avg Confidence",
+                st.markdown(create_metric_card(
+                    "🎯 Confidence Score",
                     f"{avg_confidence:.1%}",
-                    delta=f"+{random.uniform(1, 3):.1f}%",
-                    help="Average confidence score of responses"
-                )
+                    f"+{random.uniform(1, 3):.1f}%"
+                ), unsafe_allow_html=True)
             
             with kpi_cols[4]:
-                st.metric(
+                st.markdown(create_metric_card(
                     "👥 Active Users",
                     f"{unique_users}",
-                    delta=f"+{random.randint(1, 8)}",
-                    help="Number of unique users in the period"
-                )
+                    f"+{random.randint(1, 8)} new"
+                ), unsafe_allow_html=True)
         
-        # Charts section
+        # Charts section with modern containers
         col1, col2 = st.columns(2)
         
         with col1:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             st.subheader("📈 Performance Trends")
             
             # Generate sample performance data
@@ -1610,8 +1621,10 @@ The comprehensive analysis reveals several key dimensions:
             )
             
             st.plotly_chart(fig, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             st.subheader("🎭 Query Complexity Distribution")
             
             # Sample complexity data
@@ -1639,11 +1652,13 @@ The comprehensive analysis reveals several key dimensions:
             )
             
             st.plotly_chart(fig_pie, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Model usage and user activity
         col1, col2 = st.columns(2)
         
         with col1:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             st.subheader("🤖 Model Usage Statistics")
             
             model_data = {
@@ -1669,8 +1684,10 @@ The comprehensive analysis reveals several key dimensions:
             )
             
             st.plotly_chart(fig_bar, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             st.subheader("🔥 User Activity Heatmap")
             
             # Generate sample heatmap data
@@ -1708,6 +1725,7 @@ The comprehensive analysis reveals several key dimensions:
             )
             
             st.plotly_chart(fig_heatmap, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         # Top performing queries and insights
         st.subheader("🏆 Top Performance Insights")

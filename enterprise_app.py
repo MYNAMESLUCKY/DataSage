@@ -14,10 +14,10 @@ from src.components.enterprise_ui import EnterpriseUI
 from src.auth.auth_system import UserRole
 from src.security.rate_limiter import rate_limit, RateLimitType
 
-# Page configuration
+# Page configuration with enhanced settings
 st.set_page_config(
-    page_title="Enterprise RAG System",
-    page_icon="🏢",
+    page_title="Enterprise RAG Intelligence Hub",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="expanded"
 )
