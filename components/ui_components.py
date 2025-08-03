@@ -115,27 +115,26 @@ class UIComponents:
         with col2:
             # Copy button with JavaScript functionality
             if st.button("📋 Copy", key=f"copy_{result_id}", help="Copy answer to clipboard"):
+                # Use a simpler, more reliable approach with a hidden textarea
                 st.markdown(f"""
+                <textarea id="copy-area-{result_id}" style="position: absolute; left: -9999px;" readonly>
+                {answer_text}
+                </textarea>
                 <script>
-                function copyToClipboard_{result_id}() {{
-                    const text = `{answer_text.replace('`', r'\`').replace('"', r'\"')}`;
-                    navigator.clipboard.writeText(text).then(() => {{
-                        // Show success notification
-                        const button = document.querySelector('[data-testid="stButton"]:has([title="Copy answer to clipboard"])');
-                        if (button) {{
-                            const originalText = button.textContent;
-                            button.style.background = '#28a745';
-                            button.textContent = '✓ Copied!';
-                            setTimeout(() => {{
-                                button.style.background = '';
-                                button.textContent = originalText;
-                            }}, 2000);
+                (function() {{
+                    const textArea = document.getElementById('copy-area-{result_id}');
+                    if (textArea) {{
+                        textArea.select();
+                        textArea.setSelectionRange(0, 99999);
+                        try {{
+                            document.execCommand('copy');
+                        }} catch (err) {{
+                            if (navigator.clipboard) {{
+                                navigator.clipboard.writeText(textArea.value);
+                            }}
                         }}
-                    }}).catch(err => {{
-                        console.error('Failed to copy text: ', err);
-                    }});
-                }}
-                copyToClipboard_{result_id}();
+                    }}
+                }})();
                 </script>
                 """, unsafe_allow_html=True)
                 st.success("Answer copied to clipboard!", icon="✅")
