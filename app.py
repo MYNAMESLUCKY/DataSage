@@ -393,7 +393,10 @@ class RAGSystemApp:
         """Process query and display results"""
         try:
             with st.spinner("🔍 Processing your query..."):
-                result = self.api.query(query=query, llm_model="moonshotai/kimi-k2:free")
+                result = self.api.query(
+                    query=query, 
+                    llm_model=st.session_state.get('selected_llm', 'moonshotai/kimi-k2:free')
+                )
             
             if result['status'] == 'success':
                 st.subheader("💡 Answer")
