@@ -55,6 +55,31 @@ User has requested comprehensive real-time web search integration with database 
 - Query analysis and optimization suggestions
 - Comprehensive training insights and metrics export
 
+# Enterprise Security & Authentication (Updated 2025-08-03)
+
+## Authentication System Features:
+- **JWT-based Authentication**: Secure token-based authentication with configurable expiry
+- **Role-based Access Control**: Admin, User, and Viewer roles with different permissions
+- **Rate Limiting**: Advanced rate limiting for queries, logins, uploads, and API calls
+- **Session Management**: Secure session handling with token validation and automatic cleanup
+- **Password Security**: PBKDF2 hashing with salt for secure password storage
+- **Brute Force Protection**: Automatic blocking after failed login attempts
+- **Database Integration**: SQLite-based user and session management
+
+## Security Features:
+- **Multi-level Rate Limiting**: Different limits for queries (50/hour), logins (5/5min), uploads (10/hour)
+- **IP-based Tracking**: Session tracking and blocking by client identifier
+- **Automatic Cleanup**: Expired sessions and rate limit records automatically cleaned
+- **Admin Controls**: User management, rate limit overrides, and system monitoring
+- **Secure Storage**: All sensitive data encrypted and properly salted
+
+## Enterprise UI Features:
+- **Professional Interface**: Corporate-style design with security badges and status indicators
+- **Role-based Navigation**: Different menu options based on user permissions
+- **Security Dashboard**: Real-time rate limit status and security monitoring
+- **Analytics Integration**: Query performance, system stats, and usage analytics
+- **Settings Management**: User preferences, security settings, and system configuration
+
 # System Architecture (Updated 2025-08-03)
 
 ## Clean Project Structure
