@@ -27,7 +27,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["sarvamai/sarvam-1", "deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.available_models = ["sarvam-m", "deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -49,7 +49,7 @@ class RAGEngine:
                         base_url="https://api.sarvam.ai/v1"
                     )
                     self.api_provider = "SARVAM"
-                    self.default_model = "sarvamai/sarvam-1"
+                    self.default_model = "sarvam-m"
                     logger.info("SARVAM API client initialized successfully")
                 except Exception as e:
                     logger.warning(f"SARVAM API failed: {e}, trying DeepSeek...")
@@ -116,7 +116,7 @@ class RAGEngine:
         try:
             # Use default model if none specified - ensure we always have a string
             if llm_model is None or llm_model == "":
-                llm_model = getattr(self, 'default_model', 'sarvamai/sarvam-1')
+                llm_model = getattr(self, 'default_model', 'sarvam-m')
             
             # Ensure llm_model is always a string at this point
             assert isinstance(llm_model, str), f"llm_model must be a string, got {type(llm_model)}"
@@ -211,7 +211,7 @@ Please provide your answer in JSON format:
                 }
                 
                 # Only add response_format for models that support it (exclude certain models)
-                if not any(model.startswith(prefix) for prefix in ["deepseek", "moonshotai/kimi", "sarvamai"]):
+                if not any(model.startswith(prefix) for prefix in ["deepseek", "moonshotai/kimi", "sarvam"]):
                     request_params["response_format"] = {"type": "json_object"}
 
                 response = self.openai_client.chat.completions.create(**request_params)

@@ -98,13 +98,13 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 - **Storage**: FAISS for efficient similarity search and retrieval
 
 ## AI Model Integration
-- **Primary**: SARVAM API (sarvamai/sarvam-1) for reliable processing with automatic fallback
+- **Primary**: SARVAM API (sarvam-m) for reliable processing with automatic fallback
 - **Secondary**: DeepSeek API for fast text generation (deepseek-chat, deepseek-coder) as fallback
 - **Tertiary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free) as backup
 - **Final**: Direct OpenAI API support as final backup option
 - **Embeddings**: ChromaDB's built-in embedding models for vector representation
 - **Prompt Engineering**: ChatPromptTemplate for structured AI interactions
-- **Model Selection**: Configurable models including sarvamai/sarvam-1, deepseek-chat, deepseek-coder, moonshotai/kimi-k2:free, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
+- **Model Selection**: Configurable models including sarvam-m, deepseek-chat, deepseek-coder, moonshotai/kimi-k2:free, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
 - **Wikipedia Integration**: Specialized Wikipedia ingestion service with rate limiting and smart content filtering
 
 ## Configuration Management
