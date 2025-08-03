@@ -14,6 +14,9 @@ from .models import DataSource, QueryResult, ProcessingStatus
 from .utils import setup_logging, performance_monitor
 from .cache_manager import get_cache_manager, ContextManager
 from .async_processor import get_async_processor, ProcessingTask
+from .rag_improvements import EnhancedRetrieval, RetrievalAuditor
+from .search_fallback import get_search_fallback_service
+from .training_system import get_training_system
 
 logger = setup_logging(__name__)
 
@@ -34,6 +37,12 @@ class RAGSystemAPI:
         self.cache_manager = get_cache_manager()
         self.context_manager = ContextManager()
         self.async_processor = get_async_processor()
+        
+        # Enhanced RAG features
+        self.enhanced_retrieval = EnhancedRetrieval()
+        self.retrieval_auditor = RetrievalAuditor()
+        self.search_fallback = get_search_fallback_service()
+        self.training_system = get_training_system()
         
         # Initialize components
         self._initialize()
@@ -201,23 +210,53 @@ class RAGSystemAPI:
                     logger.info(f"Returned cached result for query: {query[:50]}...")
                     return cached_result
             
-            # Get relevant documents from vector store
-            relevant_docs = self.vector_store.similarity_search(
+            # Use enhanced retrieval for better document selection
+            relevant_docs = self.enhanced_retrieval.enhanced_similarity_search(
+                vector_store=self.vector_store,
                 query=query,
                 k=max_results,
                 threshold=similarity_threshold
             )
             
-            if not relevant_docs:
-                result = {
-                    'status': 'success',
-                    'answer': "I couldn't find relevant information in the processed data to answer your question. Please try rephrasing your query or ensure your data sources contain relevant content.",
-                    'sources': [],
-                    'confidence': 0.0,
-                    'processing_time': time.time() - start_time,
-                    'cached': False
-                }
-                return result
+            if not relevant_docs or len(relevant_docs) < 2:
+                # Try fallback search
+                logger.info("Insufficient relevant documents found, trying fallback search...")
+                fallback_results = self.search_fallback.search_fallback(query, min_results=1)
+                
+                if fallback_results:
+                    fallback_response = self.search_fallback.format_fallback_response(query, fallback_results)
+                    result = {
+                        'status': 'success',
+                        'answer': fallback_response['answer'],
+                        'sources': fallback_response['sources'],
+                        'confidence': fallback_response['confidence'],
+                        'processing_time': time.time() - start_time,
+                        'cached': False,
+                        'fallback_used': True
+                    }
+                    
+                    # Record fallback usage
+                    self.training_system.record_query(
+                        query=query,
+                        answer=result['answer'],
+                        sources=result['sources'],
+                        confidence=result['confidence'],
+                        response_time=result['processing_time'],
+                        fallback_used=True
+                    )
+                    
+                    return result
+                else:
+                    result = {
+                        'status': 'success',
+                        'answer': "I couldn't find relevant information in the knowledge base or external sources to answer your question. Please try rephrasing your query with more specific terms, or ensure your data sources contain relevant content.",
+                        'sources': [],
+                        'confidence': 0.0,
+                        'processing_time': time.time() - start_time,
+                        'cached': False,
+                        'fallback_used': True
+                    }
+                    return result
             
             # Generate answer using RAG engine
             answer_result = self.rag_engine.generate_answer(
@@ -240,6 +279,21 @@ class RAGSystemAPI:
                 'cached': False
             }
             
+            # Audit the retrieval for performance monitoring
+            audit_data = self.retrieval_auditor.audit_retrieval(query, relevant_docs, result['answer'])
+            result['audit_data'] = audit_data
+            
+            # Record query for training system
+            self.training_system.record_query(
+                query=query,
+                answer=result['answer'],
+                sources=result['sources'],
+                confidence=result['confidence'],
+                response_time=processing_time,
+                fallback_used=False,
+                audit_data=audit_data
+            )
+            
             # Cache the result if caching is enabled
             if use_cache:
                 model_for_cache = result['model_used']
@@ -254,6 +308,35 @@ class RAGSystemAPI:
                 'error': str(e),
                 'processing_time': time.time() - start_time if 'start_time' in locals() else 0,
                 'cached': False
+            }
+    
+    def add_user_feedback(self, query: str, user_satisfied: bool, suggestions: str = None) -> Dict[str, Any]:
+        """Add user feedback for training system improvement"""
+        try:
+            self.training_system.add_feedback(query, user_satisfied, suggestions)
+            return {
+                'status': 'success',
+                'message': 'Feedback recorded successfully'
+            }
+        except Exception as e:
+            logger.error(f"Error recording feedback: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+    
+    def get_training_insights(self) -> Dict[str, Any]:
+        """Get comprehensive training insights and recommendations"""
+        try:
+            return {
+                'status': 'success',
+                'insights': self.training_system.export_training_insights()
+            }
+        except Exception as e:
+            logger.error(f"Error getting training insights: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e)
             }
     
     @performance_monitor

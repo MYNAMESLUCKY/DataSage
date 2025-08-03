@@ -155,22 +155,26 @@ class RAGEngine:
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
             # do not change this unless explicitly requested by the user
             
-            prompt = f"""You are an intelligent AI assistant that provides accurate, helpful answers based on the provided context. 
+            prompt = f"""You are an expert knowledge assistant providing comprehensive, accurate answers.
+
+CRITICAL INSTRUCTION: Provide your answer in clean, readable format WITHOUT embedding source citations mid-sentence. Sources will be listed separately.
 
 Context Information:
 {context}
 
 Question: {query}
 
-Instructions:
-1. Provide a comprehensive and accurate answer based ONLY on the information in the context above
-2. If the context doesn't contain enough information to fully answer the question, clearly state what information is missing
-3. Include specific references to sources when possible
-4. Be concise but thorough
-5. If asked about topics not covered in the context, politely redirect to the available information
+Response Guidelines:
+1. Give a complete, well-structured answer based on the provided context
+2. Start with the most direct answer to the question
+3. Provide supporting details and explanations as needed
+4. Do NOT include source references, citations, or [Source X] markers within your answer text
+5. Write in clear, natural language as if explaining to someone who wants to understand the topic
+6. If the context lacks information for a complete answer, acknowledge this at the end
+7. Structure your response logically with proper paragraphs
 
-Please provide your answer in JSON format with the following structure:
-{{"answer": "your detailed answer here", "confidence": confidence_score_between_0_and_1}}
+Please provide your answer in JSON format:
+{{"answer": "your clean, comprehensive answer without any source citations embedded", "confidence": confidence_score_between_0_and_1}}
 """
 
             # Adjust parameters based on model type
