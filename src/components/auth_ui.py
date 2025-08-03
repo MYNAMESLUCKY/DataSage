@@ -57,7 +57,7 @@ def show_login_page():
     
     # Additional info
     st.markdown("---")
-    st.info("**Demo Credentials:**\n- Username: `demo`\n- Password: `demo123456`")
+    st.info("**New User Registration:**\nClick 'Register' to create your account with secure credentials.")
     
     # Rate limit info
     if 'rate_limiter' not in st.session_state:
@@ -172,22 +172,7 @@ def show_admin_panel():
         st.info("User management features would be implemented here")
         
         # Demo user creation for admin
-        with st.expander("Create Demo Users"):
-            if st.button("Create Demo Admin"):
-                auth_system = st.session_state.auth_system
-                result = auth_system.register_user("admin", "admin@demo.com", "admin123456", UserRole.ADMIN)
-                if result["success"]:
-                    st.success("Demo admin created: admin/admin123456")
-                else:
-                    st.error(result["message"])
-            
-            if st.button("Create Demo User"):
-                auth_system = st.session_state.auth_system
-                result = auth_system.register_user("demo", "demo@demo.com", "demo123456", UserRole.USER)
-                if result["success"]:
-                    st.success("Demo user created: demo/demo123456")
-                else:
-                    st.error(result["message"])
+        # Demo accounts removed for production security
     
     with tabs[1]:
         st.write("**Rate Limit Management**")

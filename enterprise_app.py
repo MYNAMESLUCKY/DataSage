@@ -22,9 +22,55 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for enterprise theme
+# Security headers and browser protection
 st.markdown("""
+<script>
+// Disable right-click context menu
+document.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+});
+
+// Disable F12, Ctrl+Shift+I, Ctrl+U developer tools
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'F12' || 
+        (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+        (e.ctrlKey && e.key === 'u')) {
+        e.preventDefault();
+        return false;
+    }
+});
+
+// Disable text selection
+document.addEventListener('selectstart', function(e) {
+    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+    }
+});
+
+// Clear console periodically
+setInterval(function() {
+    console.clear();
+    console.log('%cSystem Protected', 'color: red; font-size: 20px; font-weight: bold;');
+    console.log('%cUnauthorized access attempts are logged and monitored.', 'color: red; font-size: 14px;');
+}, 1000);
+</script>
+
 <style>
+    /* Disable text selection except for inputs */
+    * {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+    }
+    
+    input, textarea, [contenteditable] {
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+    }
+    
     .main-header {
         background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
         padding: 1rem;
@@ -68,6 +114,11 @@ st.markdown("""
         background-color: #2a5298;
         color: white;
     }
+    
+    /* Hide Streamlit menu and footer */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 

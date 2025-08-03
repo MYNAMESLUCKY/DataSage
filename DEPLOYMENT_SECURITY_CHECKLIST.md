@@ -107,10 +107,11 @@
 - **Security**: Multi-layer protection and monitoring
 - **Reliability**: Multiple fallback mechanisms
 
-### Demo Accounts for Testing
-- **Admin**: `admin` / `admin123456` (Full system access)
-- **User**: `demo` / `demo123456` (Standard features)
-- **Viewer**: `viewer` / `viewer123456` (Read-only access)
+### Production Security
+- **Demo Accounts**: Completely removed for security
+- **Admin Creation**: Manual creation required (see ADMIN_GUIDE.md)
+- **User Registration**: Secure self-registration with validation
+- **Browser Protection**: Developer tools disabled, console protected
 
 ### Key Features Ready
 1. **Intelligent Query Processing**: Hybrid RAG with web search integration
