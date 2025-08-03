@@ -2,6 +2,7 @@
 Enterprise Authentication System for RAG Application
 """
 
+# Removed problematic imports
 import os
 import hashlib
 import hmac
@@ -32,7 +33,7 @@ class User:
 class AuthenticationSystem:
     """Secure authentication system with JWT tokens and rate limiting"""
     
-    def __init__(self, db_path: str = None):
+    def __init__(self, db_path: Optional[str] = None):
         if db_path is None:
             # Create data directory if it doesn't exist
             data_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data')
@@ -83,7 +84,7 @@ class AuthenticationSystem:
                 )
             """)
     
-    def _hash_password(self, password: str, salt: str = None) -> Tuple[str, str]:
+    def _hash_password(self, password: str, salt: Optional[str] = None) -> Tuple[str, str]:
         """Securely hash password with salt"""
         if salt is None:
             salt = secrets.token_hex(32)
@@ -121,7 +122,7 @@ class AuthenticationSystem:
         except jwt.InvalidTokenError:
             return None
     
-    def _check_rate_limit(self, username: str, ip_address: str = None) -> bool:
+    def _check_rate_limit(self, username: str, ip_address: Optional[str] = None) -> bool:
         """Check if user has exceeded login attempt rate limit"""
         cutoff_time = datetime.now() - timedelta(seconds=self.rate_limit_window)
         
@@ -210,7 +211,7 @@ class AuthenticationSystem:
         except Exception as e:
             return {"success": False, "message": f"Registration failed: {str(e)}"}
     
-    def authenticate_user(self, username: str, password: str, ip_address: str = None) -> Dict:
+    def authenticate_user(self, username: str, password: str, ip_address: Optional[str] = None) -> Dict:
         """Authenticate user and return JWT token"""
         try:
             # Check rate limiting
