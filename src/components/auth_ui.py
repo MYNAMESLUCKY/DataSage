@@ -39,22 +39,23 @@ def show_login_page():
             with tab1:
                 try:
                     from src.components.google_auth import show_google_login_button
-                    return show_google_login_button()
+                    show_google_login_button()
                 except Exception as e:
                     st.error(f"Google login unavailable: {str(e)}")
-                    return show_standard_login_form()
+                    st.info("Please use Standard Login tab below.")
             
             with tab2:
-                return show_standard_login_form()
+                show_standard_login_form()
         else:
             # Show only standard login
             st.info("💡 Standard authentication available. Configure Firebase for Google login.")
-            return show_standard_login_form()
+            show_standard_login_form()
             
     except Exception as e:
         st.error(f"Authentication system error: {str(e)}")
         st.info("Please refresh the page or contact support.")
-        return False
+        
+    return False
 
 def check_firebase_availability():
     """Check if Firebase credentials are available"""
