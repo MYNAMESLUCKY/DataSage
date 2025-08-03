@@ -258,11 +258,59 @@ class HybridRAGProcessor:
             if not final_docs:
                 final_docs = kb_docs[:10]  # Fallback
             
-            result = self.rag_engine.generate_answer(
-                query=query,
-                relevant_docs=final_docs,
-                llm_model=llm_model
-            )
+            # Always ensure we can provide an answer with available data
+            try:
+                result = self.rag_engine.generate_answer(
+                    query=query,
+                    relevant_docs=final_docs,
+                    llm_model=llm_model
+                )
+                
+                # Check if result indicates failure but we have documents
+                if (result.get('status') == 'error' and final_docs and 
+                    'rate limit' in result.get('answer', '').lower()):
+                    
+                    logger.warning("API failed but we have relevant documents - forcing fallback answer")
+                    
+                    # Force generate answer using knowledge base
+                    context = self.rag_engine._prepare_context(final_docs)
+                    fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
+                    
+                    result = {
+                        'answer': fallback_result['answer'],
+                        'confidence': fallback_result['confidence'],
+                        'status': 'success_fallback',
+                        'model_used': f"{llm_model} (knowledge base fallback)",
+                        'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
+                        'fallback_reason': 'Rate limit exceeded - used knowledge base data'
+                    }
+                    
+            except Exception as e:
+                logger.error(f"Error in answer generation: {e}")
+                
+                # Emergency fallback - always provide something if we have docs
+                if final_docs:
+                    logger.info("Emergency fallback - extracting direct information from documents")
+                    context = self.rag_engine._prepare_context(final_docs)
+                    fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
+                    
+                    result = {
+                        'answer': fallback_result['answer'],
+                        'confidence': fallback_result['confidence'],
+                        'status': 'emergency_fallback',
+                        'model_used': 'Knowledge Base Direct Access',
+                        'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
+                        'fallback_reason': f'Complete API failure - emergency knowledge base access: {str(e)}'
+                    }
+                else:
+                    result = {
+                        'answer': "I encountered technical difficulties and no relevant information is available in the knowledge base for your query.",
+                        'confidence': 0.1,
+                        'status': 'no_data_error',
+                        'model_used': 'None',
+                        'sources': [],
+                        'fallback_reason': f'No documents available and API failed: {str(e)}'
+                    }
             
             processing_time = time.time() - start_time
             

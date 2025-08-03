@@ -264,16 +264,30 @@ Please provide your answer in JSON format:
         except Exception as e:
             import traceback
             error_traceback = traceback.format_exc()
-            logger.error(f"Error generating answer: {e}")
-            logger.error(f"Full traceback: {error_traceback}")
-            return {
-                "answer": f"Failed to generate response: {str(e)}", 
-                "confidence": 0.0,
-                "status": "error",
-                "model_used": model,
-                "api_provider": self.api_provider,
-                "error_details": error_traceback
-            }
+            logger.error(f"API call failed: {e}")
+            logger.warning(f"Falling back to knowledge base answer generation")
+            
+            # Check if it's a rate limit error and we have context
+            if "rate limit" in str(e).lower() and context.strip():
+                logger.info("Rate limit detected - using enhanced fallback with available knowledge")
+                fallback_result = self._generate_enhanced_fallback_answer(query, context)
+                fallback_result.update({
+                    "model_used": f"{model} (fallback)",
+                    "api_provider": f"{self.api_provider} (fallback)",
+                    "status": "success_fallback",
+                    "fallback_reason": "Rate limit exceeded - used knowledge base"
+                })
+                return fallback_result
+            else:
+                # For other errors, try basic fallback
+                fallback_result = self._generate_fallback_answer(query, context)
+                fallback_result.update({
+                    "model_used": f"{model} (fallback)",
+                    "api_provider": f"{self.api_provider} (fallback)", 
+                    "status": "error_fallback",
+                    "fallback_reason": f"API error: {str(e)}"
+                })
+                return fallback_result
     
     def _try_fallback_model(self) -> bool:
         """No fallback models allowed - SARVAM only"""
@@ -308,6 +322,81 @@ Please provide your answer in JSON format:
         return {
             'answer': answer,
             'confidence': 0.6
+        }
+    
+    def _generate_enhanced_fallback_answer(self, query: str, context: str) -> Dict[str, Any]:
+        """Generate an enhanced fallback answer using advanced text processing"""
+        
+        if not context.strip():
+            return {
+                'answer': "No relevant information is available in the knowledge base for your query.",
+                'confidence': 0.1
+            }
+        
+        # Enhanced processing for better answers
+        query_lower = query.lower()
+        
+        # Split context into paragraphs and sentences
+        paragraphs = [p.strip() for p in context.split('\n\n') if p.strip()]
+        
+        # Score paragraphs based on query relevance
+        scored_paragraphs = []
+        query_words = set(query_lower.split())
+        
+        for paragraph in paragraphs:
+            if len(paragraph) < 50:  # Skip very short paragraphs
+                continue
+                
+            para_words = set(paragraph.lower().split())
+            overlap = len(query_words.intersection(para_words))
+            
+            # Calculate relevance score
+            relevance_score = overlap / len(query_words) if query_words else 0
+            
+            if relevance_score > 0.1:  # At least 10% word overlap
+                scored_paragraphs.append((paragraph, relevance_score))
+        
+        # Sort by relevance and take top paragraphs
+        scored_paragraphs.sort(key=lambda x: x[1], reverse=True)
+        
+        if scored_paragraphs:
+            # Create comprehensive answer from top relevant paragraphs
+            top_paragraphs = [p[0] for p in scored_paragraphs[:3]]
+            
+            answer = "Based on the information in the knowledge base:\n\n"
+            for i, paragraph in enumerate(top_paragraphs, 1):
+                # Clean up paragraph
+                clean_para = paragraph.replace('[Source', '').replace(']', '').strip()
+                if len(clean_para) > 200:
+                    clean_para = clean_para[:200] + "..."
+                answer += f"{i}. {clean_para}\n\n"
+            
+            answer += "Note: This answer was generated from the knowledge base due to API rate limits, but contains relevant information to address your question."
+            
+            confidence = min(0.85, scored_paragraphs[0][1] * 2)  # Cap at 85%
+            
+        else:
+            # Fallback to simple sentence matching
+            sentences = [s.strip() for s in context.split('.') if s.strip() and len(s.strip()) > 20]
+            relevant_sentences = []
+            
+            for sentence in sentences:
+                sentence_words = set(sentence.lower().split())
+                overlap = len(query_words.intersection(sentence_words))
+                
+                if overlap > 0:
+                    relevant_sentences.append(sentence)
+            
+            if relevant_sentences:
+                answer = "From the available information: " + ". ".join(relevant_sentences[:5]) + "."
+                confidence = 0.7
+            else:
+                answer = "The knowledge base contains information related to your topic, but I cannot provide a specific answer due to API limitations. Please try rephrasing your question or wait for API access to be restored."
+                confidence = 0.3
+        
+        return {
+            'answer': answer,
+            'confidence': confidence
         }
     
     def _extract_sources(self, relevant_docs: List[Document]) -> List[str]:
