@@ -429,53 +429,80 @@ class RAGSystemApp:
         # Create unique identifier
         text_id = hashlib.md5(f"{answer_text}_{unique_id}".encode()).hexdigest()[:8]
         
-        # Answer display with copy button
-        col1, col2 = st.columns([5, 1])
-        
-        with col1:
-            st.markdown(f"""
+        # Display answer in a styled container
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-left: 4px solid #007bff;
+            padding: 1.2rem;
+            margin: 0.5rem 0;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+            position: relative;
+        ">
             <div style="
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                border-left: 4px solid #007bff;
-                padding: 1.2rem;
-                margin: 0.5rem 0;
-                border-radius: 0 8px 8px 0;
-                box-shadow: 0 2px 4px rgba(0,123,255,0.1);
+                line-height: 1.6;
+                color: #333;
+                font-size: 1rem;
+                white-space: pre-wrap;
+                word-wrap: break-word;
+                margin-bottom: 0.5rem;
             ">
-                <div id="answer-content-{text_id}" style="
-                    line-height: 1.6;
-                    color: #333;
-                    font-size: 1rem;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                ">
-                    {answer_text}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        with col2:
-            if st.button("📋", key=f"copy_btn_{text_id}", help="Copy answer to clipboard"):
-                # Use streamlit's built-in text area for copying
-                st.markdown(f"""
-                <textarea id="copy-text-{text_id}" style="position: absolute; left: -9999px;" readonly>
                 {answer_text}
-                </textarea>
-                <script>
-                    const textArea = document.getElementById('copy-text-{text_id}');
-                    if (textArea) {{
-                        textArea.select();
-                        textArea.setSelectionRange(0, 99999);
-                        try {{
-                            document.execCommand('copy');
-                        }} catch (err) {{
-                            // Fallback for modern browsers
-                            navigator.clipboard.writeText(textArea.value);
-                        }}
+            </div>
+            <button onclick="copyToClipboard_{text_id}()" style="
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 8px;
+                cursor: pointer;
+                font-size: 12px;
+            " title="Copy to clipboard">📋 Copy</button>
+        </div>
+        
+        <textarea id="copy-source-{text_id}" style="position: absolute; left: -9999px;" readonly>
+        {answer_text}
+        </textarea>
+        
+        <script>
+        function copyToClipboard_{text_id}() {{
+            const textArea = document.getElementById('copy-source-{text_id}');
+            if (textArea) {{
+                textArea.select();
+                textArea.setSelectionRange(0, 99999);
+                try {{
+                    document.execCommand('copy');
+                    // Show temporary success message
+                    const button = event.target;
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '✅ Copied!';
+                    button.style.background = '#28a745';
+                    setTimeout(() => {{
+                        button.innerHTML = originalText;
+                        button.style.background = '#007bff';
+                    }}, 2000);
+                }} catch (err) {{
+                    if (navigator.clipboard) {{
+                        navigator.clipboard.writeText(textArea.value).then(() => {{
+                            const button = event.target;
+                            const originalText = button.innerHTML;
+                            button.innerHTML = '✅ Copied!';
+                            button.style.background = '#28a745';
+                            setTimeout(() => {{
+                                button.innerHTML = originalText;
+                                button.style.background = '#007bff';
+                            }}, 2000);
+                        }});
                     }}
-                </script>
-                """, unsafe_allow_html=True)
-                st.success("✅ Copied!", icon="📋")
+                }}
+            }}
+        }}
+        </script>
+        """, unsafe_allow_html=True)
 
     def process_uploaded_files(self):
         """Process uploaded files"""

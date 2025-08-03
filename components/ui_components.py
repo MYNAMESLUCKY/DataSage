@@ -113,31 +113,57 @@ class UIComponents:
             """, unsafe_allow_html=True)
         
         with col2:
-            # Copy button with JavaScript functionality
-            if st.button("📋 Copy", key=f"copy_{result_id}", help="Copy answer to clipboard"):
-                # Use a simpler, more reliable approach with a hidden textarea
-                st.markdown(f"""
-                <textarea id="copy-area-{result_id}" style="position: absolute; left: -9999px;" readonly>
-                {answer_text}
-                </textarea>
-                <script>
-                (function() {{
-                    const textArea = document.getElementById('copy-area-{result_id}');
-                    if (textArea) {{
-                        textArea.select();
-                        textArea.setSelectionRange(0, 99999);
-                        try {{
-                            document.execCommand('copy');
-                        }} catch (err) {{
-                            if (navigator.clipboard) {{
-                                navigator.clipboard.writeText(textArea.value);
-                            }}
+            # Standalone copy functionality using JavaScript only
+            st.markdown(f"""
+            <button onclick="copyAnswerText_{result_id}()" style="
+                background: #007bff;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 12px;
+                cursor: pointer;
+                font-size: 12px;
+                margin-top: 10px;
+            " title="Copy answer to clipboard">📋 Copy</button>
+            
+            <textarea id="copy-text-{result_id}" style="position: absolute; left: -9999px;" readonly>
+            {answer_text}
+            </textarea>
+            
+            <script>
+            function copyAnswerText_{result_id}() {{
+                const textArea = document.getElementById('copy-text-{result_id}');
+                if (textArea) {{
+                    textArea.select();
+                    textArea.setSelectionRange(0, 99999);
+                    try {{
+                        document.execCommand('copy');
+                        const button = event.target;
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '✅ Copied!';
+                        button.style.background = '#28a745';
+                        setTimeout(() => {{
+                            button.innerHTML = originalText;
+                            button.style.background = '#007bff';
+                        }}, 2000);
+                    }} catch (err) {{
+                        if (navigator.clipboard) {{
+                            navigator.clipboard.writeText(textArea.value).then(() => {{
+                                const button = event.target;
+                                const originalText = button.innerHTML;
+                                button.innerHTML = '✅ Copied!';
+                                button.style.background = '#28a745';
+                                setTimeout(() => {{
+                                    button.innerHTML = originalText;
+                                    button.style.background = '#007bff';
+                                }}, 2000);
+                            }});
                         }}
                     }}
-                }})();
-                </script>
-                """, unsafe_allow_html=True)
-                st.success("Answer copied to clipboard!", icon="✅")
+                }}
+            }}
+            </script>
+            """, unsafe_allow_html=True)
         
         # Show sources if available
         if result.get('sources'):
