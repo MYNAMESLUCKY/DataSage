@@ -150,13 +150,9 @@ class RAGEngine:
             if not self.openai_client:
                 raise Exception("No AI client available")
                 
-                # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
-                # do not change this unless explicitly requested by the user
-                
-                # Different prompts based on model capabilities
-                if model.startswith("sarvam"):
-                    # SARVAM models work better with plain text prompts
-                    prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
+            # Prepare prompt based on model type
+            if model.startswith("sarvam"):
+                prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
 
 CRITICAL INSTRUCTION: Provide detailed, specific answers with examples, numbers, names, and concrete details. Avoid generic statements. Sources will be listed separately.
 
@@ -174,198 +170,71 @@ Response Guidelines:
 6. **AVOID GENERIC LANGUAGE**: Replace vague terms like "various schemes" with specific scheme names
 7. **INCLUDE PRACTICAL DETAILS**: Add implementation details, eligibility criteria, or application processes if available
 8. **NO SOURCE CITATIONS**: Do NOT include [Source X] or citation markers within your answer text
-9. **FORMATTING**: Use **bold** for key terms and section headers, bullet points for lists
-
-Example of GOOD specific answer style:
-- "The Pradhan Mantri Fasal Bima Yojana provides crop insurance with premium rates of 2% for Kharif crops and 1.5% for Rabi crops"
-- "Under the PM-KISAN scheme, farmers receive ₹6,000 annually in three installments of ₹2,000 each"
-
-Example of BAD generic answer style:
-- "The government offers various schemes to support farmers"
-- "Multiple programs provide financial assistance"
 
 Please provide your answer directly as plain text with clear formatting and structure. Do NOT use JSON format.
 """
-                else:
-                    # Other models can handle JSON format requests
-                    prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
-
-CRITICAL INSTRUCTION: Provide detailed, specific answers with examples, numbers, names, and concrete details. Avoid generic statements. Sources will be listed separately.
+            else:
+                prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
 
 Context Information:
 {context}
 
 Question: {query}
-
-Response Guidelines:
-1. **BE SPECIFIC**: Include specific names, programs, schemes, amounts, dates, and concrete details from the context
-2. **PROVIDE EXAMPLES**: Give real examples, case studies, or specific instances mentioned in the documents
-3. **USE NUMBERS**: Include exact figures, percentages, amounts, or quantities when available
-4. **STRUCTURE CLEARLY**: Use clear sections, bullet points, or numbered lists when appropriate
-5. **START WITH KEY POINTS**: Lead with the most important and specific information
-6. **AVOID GENERIC LANGUAGE**: Replace vague terms like "various schemes" with specific scheme names
-7. **INCLUDE PRACTICAL DETAILS**: Add implementation details, eligibility criteria, or application processes if available
-8. **NO SOURCE CITATIONS**: Do NOT include [Source X] or citation markers within your answer text
-
-Example of GOOD specific answer style:
-- "The Pradhan Mantri Fasal Bima Yojana provides crop insurance with premium rates of 2% for Kharif crops and 1.5% for Rabi crops"
-- "Under the PM-KISAN scheme, farmers receive ₹6,000 annually in three installments of ₹2,000 each"
-
-Example of BAD generic answer style:
-- "The government offers various schemes to support farmers"
-- "Multiple programs provide financial assistance"
 
 Please provide your answer in JSON format:
 {{"answer": "your detailed, specific answer with concrete examples and exact details", "confidence": confidence_score_between_0_and_1}}
 """
 
-                # Adjust parameters based on model type
-                request_params = {
-                    "model": model,
-                    "messages": [
-                        {"role": "system", "content": "You are an expert research analyst who provides detailed, specific answers with concrete examples, exact figures, and actionable information. Always prioritize specificity over generality."},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 1500
-                }
-                
-                # Only add response_format for models that support it (exclude certain models)
-                if not any(model.startswith(prefix) for prefix in ["deepseek", "moonshotai/kimi", "sarvam"]):
-                    request_params["response_format"] = {"type": "json_object"}
+            # Configure request parameters
+            request_params = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": "You are an expert research analyst who provides detailed, specific answers with concrete examples, exact figures, and actionable information. Always prioritize specificity over generality."},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.2,
+                "max_tokens": 1500
+            }
+            
+            # Only add response_format for models that support it
+            if not model.startswith("sarvam"):
+                request_params["response_format"] = {"type": "json_object"}
 
-                # Debug logging before API call
-                logger.info(f"Making SARVAM API call with model: {model}")
-                logger.debug(f"Request params: {request_params}")
+            # Make the API call
+            logger.info(f"Making SARVAM API call with model: {model}")
+            
+            try:
+                response = self.openai_client.chat.completions.create(**request_params)
+                logger.info(f"SARVAM API call completed successfully")
                 
-                # Ensure the API client is properly configured
-                if not self.openai_client:
-                    logger.error("OpenAI client is None - SARVAM API not initialized")
-                    return {
-                        "answer": "SARVAM API client not initialized", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                try:
-                    response = self.openai_client.chat.completions.create(**request_params)
-                    logger.info(f"SARVAM API call completed, response type: {type(response)}")
+                # Validate response structure
+                if not response or not hasattr(response, 'choices') or not response.choices:
+                    raise Exception("Invalid API response structure")
                     
-                    # Immediate check for None response
-                    if response is None:
-                        logger.error("SARVAM API returned None response")
+                content = response.choices[0].message.content
+                if not content or not content.strip():
+                    raise Exception("Empty response content")
+                
+                # Process response based on model type
+                if model.startswith("sarvam"):
+                    return {
+                        'answer': content.strip(),
+                        'confidence': 0.8,
+                        'status': 'success',
+                        'model_used': model,
+                        'api_provider': self.api_provider
+                    }
+                else:
+                    try:
+                        result = json.loads(content)
                         return {
-                            "answer": "SARVAM API returned None - API may be temporarily unavailable", 
-                            "confidence": 0.0,
-                            "status": "error",
-                            "model_used": model,
-                            "api_provider": self.api_provider
+                            'answer': result.get('answer', content),
+                            'confidence': result.get('confidence', 0.8),
+                            'status': 'success',
+                            'model_used': model,
+                            'api_provider': self.api_provider
                         }
-                        
-                except Exception as api_error:
-                    import traceback
-                    logger.error(f"SARVAM API call failed: {api_error}")
-                    logger.error(f"API error traceback: {traceback.format_exc()}")
-                    return {
-                        "answer": f"SARVAM API call failed: {str(api_error)}", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                # Enhanced debugging and validation
-                logger.debug(f"API response received: {type(response)}")
-                
-                if response is None:
-                    logger.error("API response is None")
-                    return {
-                        "answer": "API returned None response", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                if not hasattr(response, 'choices'):
-                    logger.error(f"API response missing choices attribute: {response}")
-                    return {
-                        "answer": "API response missing choices", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                if response.choices is None:
-                    logger.error("API response.choices is None")
-                    return {
-                        "answer": "API response choices is None", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                if len(response.choices) == 0:
-                    logger.error("API response.choices is empty")
-                    return {
-                        "answer": "API response choices is empty", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                # Comprehensive safety checks for message content with detailed logging
-                try:
-                    logger.debug(f"Accessing response.choices[0], choices length: {len(response.choices)}")
-                    choice = response.choices[0]
-                    logger.debug(f"Choice object: {type(choice)}")
-                    
-                    if choice is None:
-                        raise Exception("Response choice is None")
-                    
-                    if not hasattr(choice, 'message'):
-                        raise Exception(f"Choice missing message attribute: {choice}")
-                    
-                    message = choice.message
-                    logger.debug(f"Message object: {type(message)}")
-                    
-                    if message is None:
-                        raise Exception("Message object is None")
-                    
-                    if not hasattr(message, 'content'):
-                        raise Exception(f"Message missing content attribute: {message}")
-                    
-                    content = message.content
-                    logger.debug(f"Content: {type(content)} - '{content[:50] if content else 'None'}'")
-                    
-                    if content is None:
-                        raise Exception("Message content is None")
-                        
-                    if not content.strip():
-                        raise Exception("Message content is empty")
-                        
-                except Exception as content_error:
-                    logger.error(f"Detailed API response structure error: {content_error}")
-                    logger.error(f"Response type: {type(response)}")
-                    logger.error(f"Response attributes: {dir(response) if response else 'None'}")
-                    return {
-                        "answer": f"API response validation failed: {str(content_error)}", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-                
-                # Process valid content
-                if content and content.strip():
-                    # Handle response based on model type
-                    if model.startswith("sarvam"):
-                        # SARVAM models return plain text, use directly
+                    except json.JSONDecodeError:
                         return {
                             'answer': content.strip(),
                             'confidence': 0.8,
@@ -373,47 +242,16 @@ Please provide your answer in JSON format:
                             'model_used': model,
                             'api_provider': self.api_provider
                         }
-                    else:
-                        # Other models may return JSON, try to parse
-                        try:
-                            result = json.loads(content)
-                            return {
-                                'answer': result.get('answer', content),
-                                'confidence': result.get('confidence', 0.8),
-                                'status': 'success',
-                                'model_used': model,
-                                'api_provider': self.api_provider
-                            }
-                        except json.JSONDecodeError:
-                            # If JSON parsing fails, use content directly
-                            return {
-                                'answer': content.strip(),
-                                'confidence': 0.8,
-                                'status': 'success',
-                                'model_used': model,
-                                'api_provider': self.api_provider
-                            }
-                else:
-                    return {
-                        "answer": "No response generated", 
-                        "confidence": 0.0,
-                        "status": "error",
-                        "model_used": model,
-                        "api_provider": self.api_provider
-                    }
-            
-            # CRITICAL BUG FIX: The make_api_call function was processing all the logic
-            # but not returning any value! This caused the NoneType error.
-            # Every code path above has return statements, but we need this catch-all return.
-            
-            # This should never be reached due to the logic above, but adding as safety
-            return {
-                "answer": "API processing completed but no return path was taken", 
-                "confidence": 0.0,
-                "status": "error",
-                "model_used": model,
-                "api_provider": self.api_provider
-            }
+                        
+            except Exception as api_error:
+                logger.error(f"SARVAM API call failed: {api_error}")
+                return {
+                    "answer": f"SARVAM API call failed: {str(api_error)}", 
+                    "confidence": 0.0,
+                    "status": "error",
+                    "model_used": model,
+                    "api_provider": self.api_provider
+                }
             
         try:
             # Use advanced rate limiter for intelligent backoff
