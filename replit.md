@@ -17,16 +17,16 @@ The application allows users to:
 
 Preferred communication style: Simple, everyday language.
 
-# Scaling Requirements & Training System (Updated 2025-08-03)
+# Enhanced Web Search & Database Caching (Updated 2025-08-03)
 
-User has requested comprehensive scaling analysis for enterprise deployment AND complete 8-point RAG improvement implementation:
+User has requested comprehensive real-time web search integration with database caching for any question:
 
-## Enterprise Scaling Focus:
-- Multi-user authentication and security
-- Performance optimization for 3,284+ documents
-- Advanced analytics and monitoring
-- Enterprise integrations and API development
-- Scalable infrastructure beyond single-instance architecture
+## Web Search Integration Features:
+- Real-time web search using Tavily API for any question
+- PostgreSQL database caching for search results and content
+- Intelligent cache management with automatic cleanup
+- Web content prioritization over existing documents
+- Hybrid RAG combining knowledge base with live web data
 
 ## 8-Point RAG Improvement Plan - FULLY IMPLEMENTED:
 1. ✅ **Document Chunking Strategy** - Intelligent semantic chunking with content type detection
@@ -86,6 +86,8 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
   - `WikipediaIngestionService`: Specialized service for Wikipedia article ingestion with rate limiting
   - `TavilyIntegrationService`: Real-time web search integration with content cleaning and processing
   - `WebRAGProcessor`: Hybrid processor combining local knowledge base with web search results
+  - `WebCacheDatabase`: PostgreSQL-based caching system for web search results and content
+  - `WebCacheUI`: Dashboard for monitoring and managing web search cache
   - `RAGSystemAPI`: Main API layer that coordinates all services
   - `EnhancedRetrieval`: Multi-strategy retrieval with intelligent ranking
   - `AdvancedEmbeddingsManager`: Better embeddings with caching and optimization
@@ -124,6 +126,7 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 - **OpenRouter API**: Multi-provider AI service supporting various models (optional API key)
 - **OpenAI API**: Direct API support as final fallback option (optional API key)
 - **Tavily API**: Real-time web search and content retrieval service (requires API key)
+- **PostgreSQL**: Database for caching web search results and processed content
 - **ChromaDB**: Vector database for embeddings and similarity search
 
 ## Document Processing Libraries

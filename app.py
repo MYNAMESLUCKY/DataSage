@@ -149,7 +149,8 @@ class RAGSystemApp:
             ("1. Data Ingestion", 1),
             ("2. Processing", 2),
             ("3. Querying", 3),
-            ("4. Analytics", 4)
+            ("4. Web Cache", 4),
+            ("5. Analytics", 5)
         ]
 
         for step_name, step_num in steps:
@@ -179,6 +180,23 @@ class RAGSystemApp:
             help="Enhance answers with real-time web data using Tavily API"
         )
         st.session_state.use_web_search = use_web_search
+        
+        if use_web_search:
+            prioritize_web = st.sidebar.checkbox(
+                "Prioritize Web Results",
+                value=True,
+                help="Use web search as primary source instead of existing documents"
+            )
+            st.session_state.prioritize_web = prioritize_web
+            
+            max_web_results = st.sidebar.slider(
+                "Max Web Results",
+                min_value=3,
+                max_value=15,
+                value=5,
+                help="Number of web results to fetch"
+            )
+            st.session_state.max_web_results = max_web_results
         
         # Wikipedia Ingestion Section
         st.sidebar.divider()
@@ -220,6 +238,8 @@ class RAGSystemApp:
         elif st.session_state.current_step == 3:
             self.render_querying()
         elif st.session_state.current_step == 4:
+            self.render_web_cache_dashboard()
+        elif st.session_state.current_step == 5:
             self.render_analytics()
 
     def render_step_indicator(self):
@@ -397,6 +417,30 @@ class RAGSystemApp:
         with col2:
             if st.button("🔄 Refresh Dashboard"):
                 st.rerun()
+    
+    def render_web_cache_dashboard(self):
+        """Render web cache management dashboard"""
+        st.header("🌐 Web Search Cache Dashboard")
+        st.write("Monitor and manage cached web search results for improved performance.")
+        
+        # Import and render web cache UI
+        from src.components.web_cache_ui import WebCacheUI
+        cache_ui = WebCacheUI()
+        cache_ui.render_full_dashboard()
+        
+        st.divider()
+        
+        # Navigation
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("← Back to Querying"):
+                st.session_state.current_step = 3
+                st.rerun()
+        
+        with col2:
+            if st.button("Analytics Dashboard →"):
+                st.session_state.current_step = 5
+                st.rerun()
 
     def process_query(self, query: str):
         """Process query and display results with optional web search"""
@@ -419,7 +463,8 @@ class RAGSystemApp:
                         query=query,
                         llm_model=st.session_state.get('selected_llm', 'sarvam-m'),
                         use_web_search=True,
-                        max_web_results=5
+                        max_web_results=st.session_state.get('max_web_results', 5),
+                        prioritize_web=st.session_state.get('prioritize_web', True)
                     )
                 else:
                     result = self.api.query(
@@ -443,9 +488,16 @@ class RAGSystemApp:
                     for i, web_source in enumerate(result['web_sources'], 1):
                         st.write(f"{i}. [{web_source['title']}]({web_source['url']})")
                 
-                # Display search info
+                # Display search info with caching details
                 if result.get('web_results_used', 0) > 0:
-                    st.info(f"Enhanced with {result['web_results_used']} real-time web results")
+                    cache_info = " (from cache)" if result.get('cache_hit') else " (fresh)"
+                    db_info = " | Database caching enabled" if result.get('database_caching') else ""
+                    st.info(f"Enhanced with {result['web_results_used']} web results{cache_info}{db_info}")
+                
+                # Display performance insights
+                if result.get('insights'):
+                    with st.expander("🔍 Query Insights"):
+                        st.write(result['insights'])
                 
                 # Add to query history
                 if 'query_history' not in st.session_state:
