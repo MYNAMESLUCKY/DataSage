@@ -169,19 +169,37 @@ class RAGSystemAPI:
         query: str, 
         llm_model: str = "gpt-4o",
         max_results: int = 5,
-        similarity_threshold: float = 0.1
+        similarity_threshold: float = 0.1,
+        use_cache: bool = True
     ) -> Dict[str, Any]:
         """
-        Process a query and return intelligent answers with source attribution
+        Process a query with intelligent caching and return answers with source attribution
         """
         try:
+            start_time = time.time()
             logger.info(f"Processing query: {query[:100]}...")
             
             if not self.is_ready:
                 return {
                     'status': 'error',
-                    'error': 'RAG system is not ready. Please ensure data sources are processed first.'
+                    'error': 'RAG system is not ready. Please ensure data sources are processed first.',
+                    'processing_time': time.time() - start_time,
+                    'cached': False
                 }
+            
+            # Generate context fingerprint for cache key
+            context_fingerprint = self.context_manager.get_current_fingerprint()
+            
+            # Check cache first if enabled
+            if use_cache:
+                model_for_cache = llm_model or "default"
+                cached_result = self.cache_manager.get(query, model_for_cache, context_fingerprint)
+                
+                if cached_result:
+                    cached_result['cached'] = True
+                    cached_result['processing_time'] = time.time() - start_time
+                    logger.info(f"Returned cached result for query: {query[:50]}...")
+                    return cached_result
             
             # Get relevant documents from vector store
             relevant_docs = self.vector_store.similarity_search(
@@ -191,33 +209,51 @@ class RAGSystemAPI:
             )
             
             if not relevant_docs:
-                return {
+                result = {
                     'status': 'success',
                     'answer': "I couldn't find relevant information in the processed data to answer your question. Please try rephrasing your query or ensure your data sources contain relevant content.",
                     'sources': [],
-                    'confidence': 0.0
+                    'confidence': 0.0,
+                    'processing_time': time.time() - start_time,
+                    'cached': False
                 }
+                return result
             
             # Generate answer using RAG engine
-            result = self.rag_engine.generate_answer(
+            answer_result = self.rag_engine.generate_answer(
                 query=query,
                 relevant_docs=relevant_docs,
                 llm_model=llm_model
             )
             
-            return {
+            processing_time = time.time() - start_time
+            logger.info(f"query executed in {processing_time:.2f} seconds")
+            
+            result = {
                 'status': 'success',
-                'answer': result['answer'],
-                'sources': result['sources'],
-                'confidence': result.get('confidence', 0.8),
-                'relevant_docs_count': len(relevant_docs)
+                'answer': answer_result['answer'],
+                'sources': answer_result['sources'],
+                'confidence': answer_result.get('confidence', 0.8),
+                'relevant_docs_count': len(relevant_docs),
+                'processing_time': processing_time,
+                'model_used': answer_result.get('model_used', llm_model),
+                'cached': False
             }
+            
+            # Cache the result if caching is enabled
+            if use_cache:
+                model_for_cache = result['model_used']
+                self.cache_manager.set(query, model_for_cache, result, context_fingerprint)
+            
+            return result
             
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}")
             return {
                 'status': 'error',
-                'error': str(e)
+                'error': str(e),
+                'processing_time': time.time() - start_time if 'start_time' in locals() else 0,
+                'cached': False
             }
     
     @performance_monitor
