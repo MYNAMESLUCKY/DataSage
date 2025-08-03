@@ -300,9 +300,45 @@ def apply_modern_styling():
         to { transform: rotate(360deg); }
     }
     
-    /* Clean text styling */
+    /* Clean text styling with proper contrast */
     .stMarkdown, .stText, p, h1, h2, h3, h4, h5, h6 {
         color: #2c3e50 !important;
+    }
+    
+    /* Input field styling */
+    .stTextInput > div > div > input {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #ced4da !important;
+    }
+    
+    .stTextArea > div > div > textarea {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #ced4da !important;
+    }
+    
+    /* Code block styling */
+    .stCode {
+        background-color: #f8f9fa !important;
+        color: #2c3e50 !important;
+        border: 1px solid #e9ecef !important;
+    }
+    
+    /* Response text containers */
+    .element-container .stMarkdown {
+        color: #2c3e50 !important;
+    }
+    
+    /* Query input text */
+    div[data-testid="stTextArea"] textarea {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
+    }
+    
+    div[data-testid="stTextInput"] input {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
     }
     
     /* Make plotly charts blend better */
@@ -311,8 +347,51 @@ def apply_modern_styling():
     }
     
     .plotly .modebar {
-        background: rgba(255, 255, 255, 0.1) !important;
+        background: rgba(255, 255, 255, 0.9) !important;
         border-radius: 8px !important;
+    }
+    
+    /* Comprehensive text color fixes */
+    /* Force all text to be dark and readable */
+    * {
+        color: #2c3e50 !important;
+    }
+    
+    /* Override any white text */
+    .stApp *, .main *, .block-container * {
+        color: #2c3e50 !important;
+    }
+    
+    /* Input fields */
+    .stTextInput input, .stTextArea textarea, .stSelectbox select {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
+        border: 1px solid #ced4da !important;
+    }
+    
+    /* Specific UI elements */
+    .stSelectbox > div > div, .stRadio > div, .stCheckbox > div {
+        color: #2c3e50 !important;
+    }
+    
+    /* Query and answer text containers */
+    .element-container, .stMarkdown, .stCode {
+        color: #2c3e50 !important;
+        background-color: #ffffff !important;
+    }
+    
+    /* Sidebar fixes */
+    .css-1d391kg, .sidebar .sidebar-content {
+        color: #2c3e50 !important;
+    }
+    
+    /* Force answer display to be readable */
+    .answer-container, .response-text {
+        background-color: #ffffff !important;
+        color: #2c3e50 !important;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
     }
     </style>
     """, unsafe_allow_html=True)
