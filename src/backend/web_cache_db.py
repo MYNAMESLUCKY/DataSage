@@ -40,7 +40,7 @@ class ProcessedWebContent(Base):
     content = Column(Text, nullable=False)
     content_hash = Column(String, index=True)
     source_query = Column(Text)
-    metadata = Column(JSON)
+    meta_data = Column(JSON)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_validated = Column(DateTime, default=datetime.utcnow)
     is_active = Column(Boolean, default=True)
@@ -239,7 +239,7 @@ class WebCacheDatabase:
                     content=content,
                     content_hash=content_hash,
                     source_query=source_query,
-                    metadata=metadata or {},
+                    meta_data=metadata or {},
                     quality_score=quality_score
                 )
                 session.add(content_entry)
@@ -288,7 +288,7 @@ class WebCacheDatabase:
                     "source_query": result.source_query,
                     "quality_score": result.quality_score,
                     "created_at": result.created_at.isoformat(),
-                    "metadata": result.metadata
+                    "metadata": result.meta_data
                 })
             
             logger.info(f"Found {len(cached_content)} cached content items for query: {query[:50]}...")
