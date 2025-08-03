@@ -74,8 +74,8 @@ def show_firebase_google_login():
         # Embed Firebase Web SDK with authentication handling
         st.markdown(f"""
         <script type="module">
-        import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js';
-        import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js';
+        import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+        import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
         
         // Firebase configuration
         const firebaseConfig = {firebase_config};
@@ -87,31 +87,46 @@ def show_firebase_google_login():
         // Google Sign-In
         window.signInWithGoogle = async function() {{
             const provider = new GoogleAuthProvider();
+            provider.addScope('email');
+            provider.addScope('profile');
+            
             try {{
+                console.log('Starting Google sign-in...');
                 const result = await signInWithPopup(auth, provider);
+                console.log('Sign-in successful:', result.user.email);
+                
                 const idToken = await getIdToken(result.user);
+                console.log('ID token obtained');
                 
-                // Send authentication data to Streamlit
-                window.parent.postMessage({{
-                    type: 'firebase-auth-success',
-                    idToken: idToken,
-                    user: {{
-                        uid: result.user.uid,
-                        email: result.user.email,
-                        displayName: result.user.displayName,
-                        photoURL: result.user.photoURL
-                    }}
-                }}, '*');
+                // Store authentication data
+                sessionStorage.setItem('firebase_token', idToken);
+                sessionStorage.setItem('firebase_user', JSON.stringify({{
+                    uid: result.user.uid,
+                    email: result.user.email,
+                    displayName: result.user.displayName,
+                    photoURL: result.user.photoURL
+                }}));
                 
-                // Reload page to update authentication state
-                setTimeout(() => {{ window.location.reload(); }}, 1000);
+                // Show success message
+                alert('Sign-in successful! Redirecting...');
+                
+                // Redirect with token
+                const url = new URL(window.location);
+                url.searchParams.set('firebase_token', idToken);
+                window.location.href = url.toString();
                 
             }} catch (error) {{
                 console.error('Firebase authentication error:', error);
-                window.parent.postMessage({{
-                    type: 'firebase-auth-error',
-                    error: error.message
-                }}, '*');
+                alert('Authentication failed: ' + error.message);
+                
+                // Show detailed error for debugging
+                if (error.code === 'auth/popup-blocked') {{
+                    alert('Please allow popups for this site and try again.');
+                }} else if (error.code === 'auth/popup-closed-by-user') {{
+                    console.log('User cancelled the sign-in');
+                }} else {{
+                    console.error('Detailed error:', error);
+                }}
             }}
         }}
         </script>
@@ -147,16 +162,17 @@ def get_firebase_web_config():
     if not project_id:
         return None
     
-    # Extract API key from client ID (common pattern)
-    api_key = client_id.split('-')[0] if client_id else "auto-generated-key"
+    # For Firebase Web SDK, we need the Web API Key from Firebase Console
+    # This is different from the Google Client ID for OAuth
+    web_api_key = os.getenv("FIREBASE_WEB_API_KEY") or "AIzaSyDummyWebAPIKey"
     
     return f"""{{
-        apiKey: "{api_key}",
+        apiKey: "{web_api_key}",
         authDomain: "{project_id}.firebaseapp.com",
         projectId: "{project_id}",
         storageBucket: "{project_id}.appspot.com",
-        messagingSenderId: "sender-id",
-        appId: "app-id"
+        messagingSenderId: "123456789",
+        appId: "1:123456789:web:abcdef123456"
     }}"""
 
 def handle_firebase_auth_result():
