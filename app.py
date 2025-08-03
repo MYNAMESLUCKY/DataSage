@@ -170,6 +170,16 @@ class RAGSystemApp:
         )
         st.session_state.selected_llm = selected_llm
         
+        # Web search integration toggle
+        st.sidebar.divider()
+        st.sidebar.subheader("🌐 Web Search Integration")
+        use_web_search = st.sidebar.checkbox(
+            "Enable Real-time Web Search",
+            value=True,
+            help="Enhance answers with real-time web data using Tavily API"
+        )
+        st.session_state.use_web_search = use_web_search
+        
         # Wikipedia Ingestion Section
         st.sidebar.divider()
         st.sidebar.subheader("📚 Wikipedia Integration")
@@ -389,22 +399,53 @@ class RAGSystemApp:
                 st.rerun()
 
     def process_query(self, query: str):
-        """Process query and display results"""
+        """Process query and display results with optional web search"""
         try:
-            with st.spinner("🔍 Processing your query..."):
-                result = self.api.query(
-                    query=query, 
-                    llm_model=st.session_state.get('selected_llm', 'sarvam-m')
-                )
+            # Import web processor
+            from src.backend.web_rag_processor import WebRAGProcessor
+            
+            # Initialize web processor
+            web_processor = WebRAGProcessor(
+                self.api.vector_store,
+                self.api.rag_engine,
+                self.api.enhanced_retrieval
+            )
+            
+            use_web_search = st.session_state.get('use_web_search', True)
+            
+            with st.spinner("🔍 Processing your query..." + (" (with web search)" if use_web_search else "")):
+                if use_web_search and web_processor.tavily_service.is_available():
+                    result = web_processor.process_query_with_web(
+                        query=query,
+                        llm_model=st.session_state.get('selected_llm', 'sarvam-m'),
+                        use_web_search=True,
+                        max_web_results=5
+                    )
+                else:
+                    result = self.api.query(
+                        query=query, 
+                        llm_model=st.session_state.get('selected_llm', 'sarvam-m')
+                    )
             
             if result['status'] == 'success':
                 st.subheader("💡 Answer")
                 self.render_answer_with_copy(result['answer'], "current_query")
                 
+                # Display traditional sources
                 if result.get('sources'):
-                    st.subheader("📖 Sources")
+                    st.subheader("📖 Knowledge Base Sources")
                     for i, source in enumerate(result['sources'], 1):
                         st.write(f"{i}. {source}")
+                
+                # Display web sources if available
+                if result.get('web_sources'):
+                    st.subheader("🌐 Web Sources")
+                    for i, web_source in enumerate(result['web_sources'], 1):
+                        st.write(f"{i}. [{web_source['title']}]({web_source['url']})")
+                
+                # Display search info
+                if result.get('web_results_used', 0) > 0:
+                    st.info(f"Enhanced with {result['web_results_used']} real-time web results")
                 
                 # Add to query history
                 if 'query_history' not in st.session_state:
@@ -414,7 +455,9 @@ class RAGSystemApp:
                     'query': query,
                     'answer': result['answer'],
                     'sources': result.get('sources', []),
-                    'confidence': result.get('confidence', 0)
+                    'web_sources': result.get('web_sources', []),
+                    'confidence': result.get('confidence', 0),
+                    'web_enhanced': result.get('web_results_used', 0) > 0
                 })
                 
                 st.success("✅ Query processed successfully!")

@@ -10,6 +10,7 @@ from .rag_engine import RAGEngine
 from .data_ingestion import DataIngestionService
 from .vector_store import VectorStoreManager
 from .wikipedia_ingestion import WikipediaIngestionService
+from .tavily_integration import TavilyIntegrationService
 from .models import DataSource, QueryResult, ProcessingStatus
 from ..utils.utils import setup_logging, performance_monitor
 from .cache_manager import get_cache_manager, ContextManager
@@ -43,6 +44,7 @@ class RAGSystemAPI:
         self.retrieval_auditor = RetrievalAuditor()
         self.search_fallback = get_search_fallback_service()
         self.training_system = get_training_system()
+        self.tavily_service = TavilyIntegrationService()
         
         # Initialize components
         self._initialize()

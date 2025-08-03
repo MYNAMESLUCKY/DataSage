@@ -6,10 +6,12 @@ The application allows users to:
 - Add and configure data sources (web URLs, APIs, files)
 - Upload and process local documents (text, PDF, Excel, CSV, Word)
 - **NEW: Ingest Wikipedia articles at scale** with smart sampling strategies
+- **NEW: Real-time web search integration** using Tavily API for live data retrieval
 - Process and chunk documents for vector storage with ChromaDB
-- Query the processed data using OpenRouter's Kimi model or other AI providers
+- Query the processed data using SARVAM API or other AI providers with web-enhanced context
 - Monitor processing status and view query history
 - **Enhanced: Wikipedia integration** with balanced, category-focused, and random sampling modes
+- **Enhanced: Hybrid RAG system** combining local knowledge base with real-time web search
 
 # User Preferences
 
@@ -82,6 +84,8 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
   - `DataIngestionService`: Handles web scraping and document processing
   - `VectorStoreManager`: Manages ChromaDB vector storage and similarity search
   - `WikipediaIngestionService`: Specialized service for Wikipedia article ingestion with rate limiting
+  - `TavilyIntegrationService`: Real-time web search integration with content cleaning and processing
+  - `WebRAGProcessor`: Hybrid processor combining local knowledge base with web search results
   - `RAGSystemAPI`: Main API layer that coordinates all services
   - `EnhancedRetrieval`: Multi-strategy retrieval with intelligent ranking
   - `AdvancedEmbeddingsManager`: Better embeddings with caching and optimization
@@ -119,6 +123,7 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 - **DeepSeek API**: Fast text generation with competitive performance (requires API key)
 - **OpenRouter API**: Multi-provider AI service supporting various models (optional API key)
 - **OpenAI API**: Direct API support as final fallback option (optional API key)
+- **Tavily API**: Real-time web search and content retrieval service (requires API key)
 - **ChromaDB**: Vector database for embeddings and similarity search
 
 ## Document Processing Libraries
