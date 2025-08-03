@@ -252,12 +252,11 @@ def show_standard_login_form():
         if register_clicked:
             st.session_state.show_register = True
             st.rerun()
-            
-    return False
     
     # Show registration form if requested
     if st.session_state.get('show_register', False):
         show_registration_form()
+        return False
     
     # Additional info
     st.markdown("---")
@@ -272,6 +271,8 @@ def show_standard_login_form():
     
     if status["requests_made"] > 0:
         st.caption(f"Login attempts: {status['requests_made']}/{status['max_requests']} (resets in {status['window_seconds']}s)")
+    
+    return False
 
 def show_registration_form():
     """Display registration form"""
@@ -304,7 +305,7 @@ def show_registration_form():
                 st.error("❌ Please enter a valid email address")
             else:
                 with st.spinner("Creating account..."):
-                    result = auth_system.register_user(username, email, password)
+                    result = auth_system.register_user(username, email, password, UserRole.USER)
                     
                     if result["success"]:
                         st.success("✅ Account created successfully! Please login.")
