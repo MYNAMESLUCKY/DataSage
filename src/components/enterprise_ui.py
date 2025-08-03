@@ -423,30 +423,17 @@ class EnterpriseUI:
             response_time = time.time() - start_time
             
             if result['status'] == 'success':
-                # Show answer with enhanced formatting and copy functionality
-                st.subheader("💡 Answer")
-                
-                # Debug the result structure
-                st.write("**Debug Info:**")
-                st.json({
-                    "result_type": str(type(result)),
-                    "result_keys": list(result.keys()) if isinstance(result, dict) else "Not a dict",
-                    "answer_key_exists": "answer" in result if isinstance(result, dict) else False
-                })
-                
-                # Ensure answer is not empty or malformed
+                # Extract answer text
                 answer_text = result.get('answer', '').strip()
                 if not answer_text:
                     st.error("❌ Empty answer received from AI model")
-                    st.write("**Full result:**")
-                    st.json(result)
                     return
                 
-                # Debug info for troubleshooting
-                st.caption(f"Answer type: {type(answer_text)} | Length: {len(answer_text)} characters")
-                st.caption(f"Answer preview: {answer_text[:100]}...")
+                # Display formatted answer with proper styling
+                st.subheader("💡 Answer")
                 
-                self._render_answer_with_copy(answer_text, f"enhanced_{int(time.time())}")
+                # Render the answer with enhanced formatting
+                self._render_formatted_answer(answer_text, f"enhanced_{int(time.time())}")
                 
                 # Show metadata
                 col1, col2, col3, col4 = st.columns(4)
@@ -533,45 +520,56 @@ class EnterpriseUI:
             st.info(f"Selected: {st.session_state.suggested_query}")
             del st.session_state.suggested_query
     
-    def _render_answer_with_copy(self, answer_text: str, unique_id: str):
-        """Render answer text with copy functionality for enterprise UI"""
-        # Validate answer text
+    def _render_formatted_answer(self, answer_text: str, unique_id: str):
+        """Render answer with professional formatting and copy functionality"""
         if not answer_text or not answer_text.strip():
             st.error("❌ No answer content to display")
             return
         
-        # Clean and escape the answer text for HTML display
-        import html
-        escaped_answer = html.escape(answer_text)
+        # Process the answer text for better formatting
+        formatted_answer = self._format_answer_text(answer_text)
         
-        # Answer display with copy functionality using columns
-        col1, col2 = st.columns([4, 1])
+        # Create columns for answer and copy functionality
+        col1, col2 = st.columns([5, 1])
         
         with col1:
-            # Display styled answer
-            st.markdown(f"""
-            <div style="
-                background: linear-gradient(135deg, #e3f2fd 0%, #f8f9fa 100%);
-                border-left: 4px solid #2196f3;
-                padding: 1.5rem;
-                margin: 0.5rem 0;
-                border-radius: 0 12px 12px 0;
-                box-shadow: 0 4px 8px rgba(33,150,243,0.15);
-            ">
-                <div style="
-                    line-height: 1.7;
-                    color: #1a1a1a;
-                    font-size: 1rem;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                    font-weight: 400;
-                    max-height: none;
-                    overflow: visible;
-                ">
-                    {escaped_answer}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+            # Display the formatted answer using Streamlit markdown
+            st.markdown(formatted_answer)
+        
+        with col2:
+            # Copy functionality with text area
+            st.text_area(
+                "Copy text:",
+                value=answer_text,
+                height=150,
+                key=f"copy_{unique_id}",
+                help="Select all (Ctrl+A) and copy (Ctrl+C)"
+            )
+    
+    def _format_answer_text(self, text: str) -> str:
+        """Format answer text with proper styling for better readability"""
+        import re
+        
+        # Clean up the text
+        formatted = text.strip()
+        
+        # Convert numbered lists to proper markdown
+        formatted = re.sub(r'^(\d+)\.\s*\*\*([^*]+)\*\*:', r'**\1. \2:**', formatted, flags=re.MULTILINE)
+        
+        # Ensure proper spacing after headers
+        formatted = re.sub(r'(\*\*[^*]+\*\*:)\s*', r'\1\n', formatted)
+        
+        # Add proper line breaks for bullet points
+        formatted = re.sub(r'\n-\s+', r'\n\n- ', formatted)
+        
+        # Ensure proper spacing between sections
+        formatted = re.sub(r'\n(\d+\.\s*\*\*)', r'\n\n\1', formatted)
+        
+        return formatted
+    
+    def _render_answer_with_copy(self, answer_text: str, unique_id: str):
+        """Legacy method - redirects to new formatted renderer"""
+        self._render_formatted_answer(answer_text, unique_id)
         
         with col2:
             # Copy area for easy text selection
