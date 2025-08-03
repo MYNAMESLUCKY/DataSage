@@ -236,7 +236,28 @@ Please provide your answer in JSON format:
 
                 response = self.openai_client.chat.completions.create(**request_params)
                 
-                content = response.choices[0].message.content
+                # Check if response is valid before accessing
+                if not response or not response.choices or len(response.choices) == 0:
+                    return {
+                        "answer": "API returned an empty response", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+                
+                # Additional safety check for message content
+                message = response.choices[0].message
+                if not message or not hasattr(message, 'content'):
+                    return {
+                        "answer": "API response missing message content", 
+                        "confidence": 0.0,
+                        "status": "error",
+                        "model_used": model,
+                        "api_provider": self.api_provider
+                    }
+                
+                content = message.content
                 if content:
                     # Handle response based on model type
                     if model.startswith("sarvam"):
