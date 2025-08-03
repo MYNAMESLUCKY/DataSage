@@ -50,10 +50,19 @@ def main():
         
         if st.button("Test Query"):
             try:
-                result = api.query(query, {})
+                result = api.query(query, llm_model="moonshotai/kimi-k2:free")
                 st.success("✅ Query successful!")
                 st.write("Answer:", result.get('answer', 'No answer'))
                 st.write("Sources:", len(result.get('sources', [])))
+                
+                # Add copy functionality for the answer
+                if result.get('answer'):
+                    st.text_area(
+                        "Copy this answer:",
+                        value=result.get('answer', ''),
+                        height=200,
+                        help="Select all (Ctrl+A) and copy (Ctrl+C)"
+                    )
             except Exception as e:
                 st.error(f"❌ Query failed: {str(e)}")
                 
