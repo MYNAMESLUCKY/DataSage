@@ -14,6 +14,7 @@ from backend.api import RAGSystemAPI
 from backend.models import DataSource, ProcessingStatus, QueryResult
 from components.ui_components import UIComponents
 from components.data_sources import DataSourceManager
+from components.wikipedia_panel import WikipediaPanel
 from config.settings import Settings
 
 class RAGSystemApp:
@@ -191,6 +192,34 @@ class RAGSystemApp:
         # Overlap
         chunk_overlap = st.sidebar.slider("Chunk Overlap", 0, 500, 50)
         st.session_state.chunk_overlap = chunk_overlap
+        
+        # Wikipedia Ingestion Section
+        st.sidebar.divider()
+        st.sidebar.subheader("📚 Wikipedia Integration")
+        
+        if st.sidebar.button("🚀 Load Wikipedia Sample", help="Load a diverse sample of Wikipedia articles"):
+            with st.spinner("Loading Wikipedia articles..."):
+                if hasattr(self.api, 'ingest_wikipedia_comprehensive'):
+                    result = self.api.ingest_wikipedia_comprehensive("balanced")
+                    if result['status'] == 'success':
+                        st.sidebar.success(f"✅ Loaded {result['details']['successful']} Wikipedia articles!")
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"❌ Failed: {result.get('message', 'Unknown error')}")
+                else:
+                    st.sidebar.error("Wikipedia ingestion not available")
+        
+        if st.sidebar.button("🎲 Load Random Articles", help="Load random Wikipedia articles for diversity"):
+            with st.spinner("Loading random articles..."):
+                if hasattr(self.api, 'ingest_wikipedia_random'):
+                    result = self.api.ingest_wikipedia_random(200)
+                    if result['status'] == 'success':
+                        st.sidebar.success(f"✅ Loaded {result['details']['successful']} random articles!")
+                        st.rerun()
+                    else:
+                        st.sidebar.error(f"❌ Failed: {result.get('message', 'Unknown error')}")
+                else:
+                    st.sidebar.error("Wikipedia ingestion not available")
 
     def render_main_content(self):
         # Step indicator

@@ -9,6 +9,7 @@ import os
 from .rag_engine import RAGEngine
 from .data_ingestion import DataIngestionService
 from .vector_store import VectorStoreManager
+from .wikipedia_ingestion import WikipediaIngestionService
 from .models import DataSource, QueryResult, ProcessingStatus
 from .utils import setup_logging, performance_monitor
 
@@ -23,6 +24,7 @@ class RAGSystemAPI:
         self.rag_engine = RAGEngine()
         self.data_ingestion = DataIngestionService()
         self.vector_store = VectorStoreManager()
+        self.wikipedia_ingestion = None  # Initialize after vector store
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.is_ready = False
         
@@ -39,6 +41,12 @@ class RAGSystemAPI:
             
             # Initialize RAG engine
             self.rag_engine.initialize()
+            
+            # Initialize Wikipedia ingestion service
+            if hasattr(self.vector_store, 'chroma_store') and self.vector_store.chroma_store:
+                self.wikipedia_ingestion = WikipediaIngestionService(self.vector_store.chroma_store)
+            else:
+                logger.warning("ChromaDB vector store not available for Wikipedia ingestion")
             
             self.is_ready = True
             logger.info("RAG System API initialized successfully")
@@ -336,6 +344,95 @@ class RAGSystemAPI:
             }
         except ImportError:
             return {'rss_mb': 0.0, 'vms_mb': 0.0, 'percent': 0.0}
+    
+    def ingest_wikipedia_categories(self, categories: List[str], articles_per_category: int = 25) -> Dict[str, Any]:
+        """Ingest Wikipedia articles from specific categories"""
+        try:
+            if not self.wikipedia_ingestion:
+                return {'status': 'error', 'message': 'Wikipedia ingestion service not available'}
+            
+            logger.info(f"Starting Wikipedia ingestion from categories: {categories}")
+            result = self.wikipedia_ingestion.ingest_wikipedia_by_categories(categories, articles_per_category)
+            
+            return {
+                'status': 'success',
+                'message': f'Ingested {result["successful"]} articles from {len(categories)} categories',
+                'details': result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error ingesting Wikipedia categories: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+    
+    def ingest_wikipedia_random(self, count: int = 100) -> Dict[str, Any]:
+        """Ingest random Wikipedia articles"""
+        try:
+            if not self.wikipedia_ingestion:
+                return {'status': 'error', 'message': 'Wikipedia ingestion service not available'}
+            
+            logger.info(f"Starting random Wikipedia ingestion of {count} articles")
+            result = self.wikipedia_ingestion.ingest_random_wikipedia_sample(count)
+            
+            return {
+                'status': 'success',
+                'message': f'Ingested {result["successful"]} random articles',
+                'details': result
+            }
+            
+        except Exception as e:
+            logger.error(f"Error ingesting random Wikipedia articles: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
+    
+    def ingest_wikipedia_comprehensive(self, strategy: str = "balanced") -> Dict[str, Any]:
+        """Comprehensive Wikipedia ingestion with different strategies"""
+        try:
+            if not self.wikipedia_ingestion:
+                return {'status': 'error', 'message': 'Wikipedia ingestion service not available'}
+            
+            total_results = {'successful': 0, 'failed': 0, 'documents_created': 0}
+            
+            if strategy == "balanced":
+                # Get major categories
+                categories = self.wikipedia_ingestion.get_wikipedia_categories(20)
+                logger.info(f"Using balanced strategy with {len(categories)} categories")
+                
+                # Ingest from categories
+                category_result = self.wikipedia_ingestion.ingest_wikipedia_by_categories(categories, 30)
+                
+                # Add random articles for diversity
+                random_result = self.wikipedia_ingestion.ingest_random_wikipedia_sample(200)
+                
+                # Combine results
+                total_results['successful'] = category_result['successful'] + random_result['successful']
+                total_results['failed'] = category_result['failed'] + random_result['failed']
+                total_results['documents_created'] = category_result['documents_created'] + random_result['documents_created']
+                
+            elif strategy == "random_diverse":
+                # Large random sample for maximum diversity
+                random_result = self.wikipedia_ingestion.ingest_random_wikipedia_sample(1000)
+                total_results = random_result
+                
+            elif strategy == "category_focused":
+                # Focus on educational categories
+                edu_categories = [
+                    "Category:Science", "Category:Mathematics", "Category:Physics",
+                    "Category:Computer_science", "Category:History", "Category:Geography",
+                    "Category:Biology", "Category:Chemistry", "Category:Technology",
+                    "Category:Philosophy", "Category:Economics", "Category:Literature"
+                ]
+                category_result = self.wikipedia_ingestion.ingest_wikipedia_by_categories(edu_categories, 50)
+                total_results = category_result
+            
+            return {
+                'status': 'success',
+                'strategy': strategy,
+                'message': f'Comprehensive ingestion completed: {total_results["successful"]} articles processed',
+                'details': total_results
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in comprehensive Wikipedia ingestion: {str(e)}")
+            return {'status': 'error', 'message': str(e)}
     
     def reset_system(self) -> Dict[str, Any]:
         """Reset the entire RAG system"""

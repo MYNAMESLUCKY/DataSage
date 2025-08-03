@@ -1,14 +1,15 @@
 # Overview
 
-This is an Enterprise RAG (Retrieval-Augmented Generation) System built with Streamlit that enables users to ingest data from various online sources and query that data using AI models. The system provides a multi-step workflow for data ingestion, processing, and intelligent querying with a professional web interface.
+This is an Enterprise RAG (Retrieval-Augmented Generation) System built with Streamlit that enables users to ingest data from various online sources, Wikipedia articles, and local documents. The system provides comprehensive knowledge access through intelligent querying with a professional web interface.
 
 The application allows users to:
 - Add and configure data sources (web URLs, APIs, files)
 - Upload and process local documents (text, PDF, Excel, CSV, Word)
-- Process and chunk documents for vector storage
-- Query the processed data using OpenAI or HuggingFace models
+- **NEW: Ingest Wikipedia articles at scale** with smart sampling strategies
+- Process and chunk documents for vector storage with ChromaDB
+- Query the processed data using OpenRouter's Kimi model or other AI providers
 - Monitor processing status and view query history
-- Manage vector embeddings with ChromaDB
+- **Enhanced: Wikipedia integration** with balanced, category-focused, and random sampling modes
 
 # User Preferences
 
@@ -28,10 +29,12 @@ Preferred communication style: Simple, everyday language.
 - **Core Services**:
   - `RAGEngine`: Orchestrates AI model interactions and query processing
   - `DataIngestionService`: Handles web scraping and document processing
-  - `VectorStoreManager`: Manages FAISS vector storage and similarity search
+  - `VectorStoreManager`: Manages ChromaDB vector storage and similarity search
+  - `WikipediaIngestionService`: **NEW** - Specialized service for Wikipedia article ingestion with rate limiting
   - `RAGSystemAPI`: Main API layer that coordinates all services
-- **Concurrency**: ThreadPoolExecutor for parallel processing
+- **Concurrency**: ThreadPoolExecutor for parallel processing with Wikipedia rate limiting
 - **Error Handling**: Comprehensive logging and graceful failure handling
+- **Wikipedia Features**: Smart article selection, category-based filtering, random sampling, and content chunking
 
 ## Data Processing Pipeline
 - **Text Extraction**: Uses `trafilatura` and `BeautifulSoup` for web content extraction
@@ -40,12 +43,13 @@ Preferred communication style: Simple, everyday language.
 - **Storage**: FAISS for efficient similarity search and retrieval
 
 ## AI Model Integration
-- **Primary**: DeepSeek API for fast and efficient text generation (deepseek-chat, deepseek-coder)
-- **Secondary**: OpenRouter API supporting multiple models (GPT-4, Claude, Llama) as fallback
+- **Primary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free) for cost-effective processing
+- **Secondary**: DeepSeek API for fast text generation (deepseek-chat, deepseek-coder) as fallback
 - **Tertiary**: Direct OpenAI API support as final backup option
 - **Embeddings**: ChromaDB's built-in embedding models for vector representation
 - **Prompt Engineering**: ChatPromptTemplate for structured AI interactions
-- **Model Selection**: Configurable models including deepseek-chat, deepseek-coder, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
+- **Model Selection**: Configurable models including moonshotai/kimi-k2:free, deepseek-chat, deepseek-coder, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
+- **Wikipedia Integration**: Specialized Wikipedia ingestion service with rate limiting and smart content filtering
 
 ## Configuration Management
 - **Settings**: Centralized configuration with dataclasses for type safety
