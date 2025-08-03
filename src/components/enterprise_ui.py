@@ -425,7 +425,17 @@ class EnterpriseUI:
             if result['status'] == 'success':
                 # Show answer with enhanced formatting and copy functionality
                 st.subheader("💡 Answer")
-                self._render_answer_with_copy(result['answer'], f"enhanced_{int(time.time())}")
+                
+                # Ensure answer is not empty or malformed
+                answer_text = result.get('answer', '').strip()
+                if not answer_text:
+                    st.error("❌ Empty answer received from AI model")
+                    return
+                
+                # Debug info for troubleshooting
+                st.caption(f"Answer length: {len(answer_text)} characters")
+                
+                self._render_answer_with_copy(answer_text, f"enhanced_{int(time.time())}")
                 
                 # Show metadata
                 col1, col2, col3, col4 = st.columns(4)
@@ -514,6 +524,15 @@ class EnterpriseUI:
     
     def _render_answer_with_copy(self, answer_text: str, unique_id: str):
         """Render answer text with copy functionality for enterprise UI"""
+        # Validate answer text
+        if not answer_text or not answer_text.strip():
+            st.error("❌ No answer content to display")
+            return
+        
+        # Clean and escape the answer text for HTML display
+        import html
+        escaped_answer = html.escape(answer_text)
+        
         # Answer display with copy functionality using columns
         col1, col2 = st.columns([4, 1])
         
@@ -535,8 +554,10 @@ class EnterpriseUI:
                     white-space: pre-wrap;
                     word-wrap: break-word;
                     font-weight: 400;
+                    max-height: none;
+                    overflow: visible;
                 ">
-                    {answer_text}
+                    {escaped_answer}
                 </div>
             </div>
             """, unsafe_allow_html=True)
