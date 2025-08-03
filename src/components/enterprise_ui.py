@@ -625,3 +625,323 @@ class EnterpriseUI:
         
         for service, status in health_status.items():
             st.write(f"**{service}:** {status}")
+    
+    def render_api_key_management(self):
+        """Render API key management interface"""
+        st.markdown("## 🔑 API Key Management")
+        st.markdown("Generate and manage API keys for programmatic access to your RAG system.")
+        
+        # Get user authentication
+        user_token = self._get_user_token()
+        if not user_token:
+            st.warning("Please authenticate to manage API keys")
+            return
+        
+        # Create sub-tabs for API key management
+        key_tabs = st.tabs(["📋 My API Keys", "➕ Generate New Key", "📊 Usage Analytics"])
+        
+        with key_tabs[0]:
+            self._render_key_list(user_token)
+        
+        with key_tabs[1]:
+            self._render_key_generation(user_token)
+        
+        with key_tabs[2]:
+            self._render_usage_analytics(user_token)
+    
+    def _get_user_token(self):
+        """Get or create authentication token for current user"""
+        try:
+            # Check if we have a cached token
+            if 'api_token' in st.session_state:
+                return st.session_state.api_token
+            
+            # Generate a token for the current session
+            user_id = st.session_state.get('user_info', {}).get('uid', 'anonymous_user')
+            
+            response = requests.post(
+                f"{self.api_gateway_url}/auth/token",
+                params={"user_id": user_id, "role": "user"}
+            )
+            
+            if response.status_code == 200:
+                token_data = response.json()
+                st.session_state.api_token = token_data['access_token']
+                return token_data['access_token']
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to get user token: {e}")
+            return None
+    
+    def _render_key_list(self, user_token: str):
+        """Render the list of existing API keys"""
+        st.markdown("### Your API Keys")
+        
+        try:
+            response = requests.get(
+                f"{self.api_gateway_url}/api-keys/list",
+                headers={"Authorization": f"Bearer {user_token}"}
+            )
+            
+            if response.status_code == 200:
+                keys = response.json()
+                
+                if not keys:
+                    st.info("You haven't created any API keys yet. Use the 'Generate New Key' tab to create one.")
+                    return
+                
+                for key in keys:
+                    self._render_key_card(key, user_token)
+                    
+            else:
+                st.error(f"Failed to fetch API keys: {response.text}")
+                
+        except Exception as e:
+            st.error(f"Error fetching API keys: {str(e)}")
+    
+    def _render_key_card(self, key: Dict[str, Any], user_token: str):
+        """Render a single API key card"""
+        status_colors = {
+            "active": "🟢",
+            "suspended": "🟡", 
+            "expired": "🔴",
+            "revoked": "⚫"
+        }
+        
+        status_icon = status_colors.get(key['status'], "❓")
+        
+        with st.container():
+            col1, col2, col3 = st.columns([3, 1, 1])
+            
+            with col1:
+                st.markdown(f"**{status_icon} {key['name']}**")
+                st.caption(f"ID: {key['key_id'][:12]}... | Scope: {key['scope']}")
+                if key['description']:
+                    st.caption(f"Description: {key['description']}")
+            
+            with col2:
+                st.metric("Usage", key['usage_count'])
+                if key['last_used']:
+                    st.caption(f"Last used: {key['last_used'][:10]}")
+                else:
+                    st.caption("Never used")
+            
+            with col3:
+                if key['status'] == 'active':
+                    if st.button("Revoke", key=f"revoke_{key['key_id']}", type="secondary"):
+                        self._revoke_key(key['key_id'], user_token)
+                        st.rerun()
+                else:
+                    st.caption(f"Status: {key['status']}")
+            
+            st.divider()
+    
+    def _render_key_generation(self, user_token: str):
+        """Render the API key generation form"""
+        st.markdown("### Generate New API Key")
+        
+        with st.form("generate_key_form"):
+            name = st.text_input(
+                "Key Name *",
+                placeholder="e.g., 'Production App API Key'",
+                help="A descriptive name to identify this key"
+            )
+            
+            description = st.text_area(
+                "Description",
+                placeholder="Optional description of what this key will be used for",
+                height=100
+            )
+            
+            scope_options = {
+                "read_only": "Read Only - System information and health endpoints",
+                "query_only": "Query Only - Search and retrieve information", 
+                "ingest_only": "Ingest Only - Add documents to knowledge base",
+                "full_access": "Full Access - Query and ingest operations"
+            }
+            
+            scope = st.selectbox(
+                "Access Scope *",
+                options=list(scope_options.keys()),
+                format_func=lambda x: scope_options[x],
+                index=1
+            )
+            
+            with st.expander("Advanced Settings"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    expires_in_days = st.number_input(
+                        "Expires in days",
+                        min_value=0,
+                        max_value=365,
+                        value=0,
+                        help="0 = Never expires"
+                    )
+                
+                with col2:
+                    rate_limit = st.number_input(
+                        "Rate limit (requests/hour)",
+                        min_value=1,
+                        max_value=10000,
+                        value=100
+                    )
+            
+            submitted = st.form_submit_button("🔑 Generate API Key", type="primary")
+            
+            if submitted:
+                if not name.strip():
+                    st.error("Key name is required")
+                else:
+                    self._generate_new_key(
+                        name=name.strip(),
+                        description=description.strip(),
+                        scope=scope,
+                        expires_in_days=expires_in_days if expires_in_days > 0 else None,
+                        rate_limit=rate_limit,
+                        user_token=user_token
+                    )
+    
+    def _generate_new_key(self, name: str, description: str, scope: str,
+                         expires_in_days: Optional[int], rate_limit: int, user_token: str):
+        """Generate a new API key"""
+        try:
+            payload = {
+                "name": name,
+                "description": description,
+                "scope": scope,
+                "rate_limit": rate_limit
+            }
+            
+            if expires_in_days:
+                payload["expires_in_days"] = expires_in_days
+            
+            response = requests.post(
+                f"{self.api_gateway_url}/api-keys/generate",
+                headers={"Authorization": f"Bearer {user_token}"},
+                json=payload
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                
+                st.success("✅ API Key Generated Successfully!")
+                st.markdown("### 🔐 Your New API Key")
+                st.code(result['api_key'])
+                st.warning("⚠️ **Important**: This is the only time you'll see this key. Store it securely!")
+                
+                with st.expander("Usage Example"):
+                    st.markdown("### Python Example")
+                    st.code(f"""
+import requests
+
+headers = {{
+    "Authorization": "Bearer {result['api_key']}",
+    "Content-Type": "application/json"
+}}
+
+response = requests.post(
+    "{self.api_gateway_url}/query",
+    headers=headers,
+    json={{"query": "What is artificial intelligence?"}}
+)
+
+result = response.json()
+print(result['answer'])
+                    """, language="python")
+                
+            else:
+                error_detail = response.json().get('detail', 'Unknown error')
+                st.error(f"Failed to generate API key: {error_detail}")
+                
+        except Exception as e:
+            st.error(f"Error generating API key: {str(e)}")
+    
+    def _revoke_key(self, key_id: str, user_token: str):
+        """Revoke an API key"""
+        try:
+            response = requests.delete(
+                f"{self.api_gateway_url}/api-keys/{key_id}",
+                headers={"Authorization": f"Bearer {user_token}"}
+            )
+            
+            if response.status_code == 200:
+                st.success("API key revoked successfully")
+            else:
+                st.error(f"Failed to revoke key: {response.text}")
+                
+        except Exception as e:
+            st.error(f"Error revoking key: {str(e)}")
+    
+    def _render_usage_analytics(self, user_token: str):
+        """Render usage analytics for all user's keys"""
+        st.markdown("### Usage Analytics")
+        
+        try:
+            response = requests.get(
+                f"{self.api_gateway_url}/api-keys/list",
+                headers={"Authorization": f"Bearer {user_token}"}
+            )
+            
+            if response.status_code == 200:
+                keys = response.json()
+                active_keys = [k for k in keys if k['status'] == 'active']
+                
+                if not active_keys:
+                    st.info("No active API keys to show analytics for.")
+                    return
+                
+                selected_key = st.selectbox(
+                    "Select API Key",
+                    options=active_keys,
+                    format_func=lambda k: f"{k['name']} ({k['usage_count']} uses)"
+                )
+                
+                if selected_key:
+                    self._show_key_stats(selected_key['key_id'], user_token)
+                    
+        except Exception as e:
+            st.error(f"Error loading analytics: {str(e)}")
+    
+    def _show_key_stats(self, key_id: str, user_token: str):
+        """Show usage statistics for a key"""
+        try:
+            days = st.select_slider(
+                "Time period",
+                options=[7, 14, 30, 60, 90],
+                value=30,
+                format_func=lambda x: f"Last {x} days"
+            )
+            
+            response = requests.get(
+                f"{self.api_gateway_url}/api-keys/{key_id}/usage",
+                headers={"Authorization": f"Bearer {user_token}"},
+                params={"days": days}
+            )
+            
+            if response.status_code == 200:
+                stats = response.json()
+                
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("Total Requests", stats['total_requests'])
+                
+                with col2:
+                    st.metric("Success Rate", f"{stats['success_rate']:.1f}%")
+                
+                with col3:
+                    st.metric("Successful Requests", stats['successful_requests'])
+                
+                if stats['top_endpoints']:
+                    st.markdown("#### Most Used Endpoints")
+                    for endpoint in stats['top_endpoints']:
+                        st.text(f"{endpoint['endpoint']}: {endpoint['count']} requests")
+                
+            else:
+                st.error("Failed to load usage statistics")
+                
+        except Exception as e:
+            st.error(f"Error loading statistics: {str(e)}")
