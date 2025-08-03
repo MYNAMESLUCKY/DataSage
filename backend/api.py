@@ -91,12 +91,21 @@ class RAGSystemAPI:
                 try:
                     logger.info(f"Processing source: {source.url}")
                     
-                    # Ingest data from source
-                    documents = self.data_ingestion.ingest_from_url(
-                        url=source.url,
-                        chunk_size=chunk_size,
-                        chunk_overlap=chunk_overlap
-                    )
+                    # Ingest data from source based on type
+                    if source.source_type == "file" and source.file_content:
+                        documents = self.data_ingestion.ingest_from_file(
+                            file_content=source.file_content,
+                            filename=source.name or source.url,
+                            file_type=source.file_type or "text",
+                            chunk_size=chunk_size,
+                            chunk_overlap=chunk_overlap
+                        )
+                    else:
+                        documents = self.data_ingestion.ingest_from_url(
+                            url=source.url,
+                            chunk_size=chunk_size,
+                            chunk_overlap=chunk_overlap
+                        )
                     
                     if documents:
                         all_documents.extend(documents)
@@ -191,6 +200,89 @@ class RAGSystemAPI:
             
         except Exception as e:
             logger.error(f"Error processing query: {str(e)}")
+            return {
+                'status': 'error',
+                'error': str(e)
+            }
+    
+    @performance_monitor
+    def process_files(
+        self,
+        uploaded_files: List[Dict[str, Any]],
+        chunk_size: int = 512,
+        chunk_overlap: int = 50,
+        embedding_model: str = "all-MiniLM-L6-v2"
+    ) -> Dict[str, Any]:
+        """
+        Process uploaded files and add them to the vector store
+        """
+        try:
+            logger.info(f"Processing {len(uploaded_files)} uploaded files...")
+            
+            all_documents = []
+            processed_files = []
+            
+            for file_data in uploaded_files:
+                try:
+                    filename = file_data.get('name', 'unknown_file')
+                    file_content = file_data.get('content')
+                    file_type = file_data.get('type', 'text')
+                    
+                    # Ensure file_content is bytes
+                    if not isinstance(file_content, bytes):
+                        if file_content is None:
+                            logger.warning(f"No content found for file {filename}")
+                            continue
+                        if isinstance(file_content, str):
+                            file_content = file_content.encode('utf-8')
+                    
+                    logger.info(f"Processing file: {filename} (type: {file_type})")
+                    
+                    # Process the file
+                    documents = self.data_ingestion.ingest_from_file(
+                        file_content=file_content,
+                        filename=filename,
+                        file_type=file_type,
+                        chunk_size=chunk_size,
+                        chunk_overlap=chunk_overlap
+                    )
+                    
+                    if documents:
+                        all_documents.extend(documents)
+                        processed_files.append(filename)
+                        logger.info(f"Successfully processed {len(documents)} chunks from {filename}")
+                    else:
+                        logger.warning(f"No content extracted from {filename}")
+                        
+                except Exception as e:
+                    logger.error(f"Failed to process file {file_data.get('name', 'unknown')}: {str(e)}")
+                    continue
+            
+            if not all_documents:
+                return {
+                    'status': 'error',
+                    'error': 'No documents could be processed from the uploaded files'
+                }
+            
+            # Update vector store with new documents
+            logger.info(f"Adding {len(all_documents)} documents to vector store...")
+            self.vector_store.add_documents(
+                documents=all_documents,
+                embedding_model=embedding_model
+            )
+            
+            # Update RAG engine with new vector store
+            self.rag_engine.update_vector_store(self.vector_store)
+            
+            return {
+                'status': 'success',
+                'processed_files': processed_files,
+                'total_documents': len(all_documents),
+                'processed_count': len(all_documents)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error processing files: {str(e)}")
             return {
                 'status': 'error',
                 'error': str(e)

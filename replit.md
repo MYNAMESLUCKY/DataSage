@@ -4,10 +4,11 @@ This is an Enterprise RAG (Retrieval-Augmented Generation) System built with Str
 
 The application allows users to:
 - Add and configure data sources (web URLs, APIs, files)
+- Upload and process local documents (text, PDF, Excel, CSV, Word)
 - Process and chunk documents for vector storage
 - Query the processed data using OpenAI or HuggingFace models
 - Monitor processing status and view query history
-- Manage vector embeddings with FAISS
+- Manage vector embeddings with ChromaDB
 
 # User Preferences
 
@@ -56,6 +57,13 @@ Preferred communication style: Simple, everyday language.
 - **OpenRouter API**: Primary AI service supporting multiple model providers (requires API key)
 - **OpenAI API**: Direct API support as fallback option (optional API key)
 - **ChromaDB**: Vector database for embeddings and similarity search
+
+## Document Processing Libraries
+- **PyPDF2**: PDF text extraction and processing
+- **pandas**: CSV and Excel data manipulation and analysis
+- **openpyxl**: Modern Excel (.xlsx) file processing
+- **xlrd**: Legacy Excel (.xls) file support
+- **python-docx**: Word document (.docx) text extraction
 
 ## Vector Storage
 - **ChromaDB**: Advanced vector database with built-in embeddings and persistent storage

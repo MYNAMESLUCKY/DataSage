@@ -2,6 +2,7 @@ from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 import time
 
 class DataSourceType(Enum):
@@ -10,6 +11,14 @@ class DataSourceType(Enum):
     API = "api"
     FILE = "file"
     DATABASE = "database"
+
+class FileType(Enum):
+    """Supported file types for document processing"""
+    TEXT = "text"
+    PDF = "pdf"
+    EXCEL = "excel"
+    CSV = "csv"
+    DOCX = "docx"
 
 class ProcessingStatus(Enum):
     """Status of data processing"""
@@ -25,13 +34,19 @@ class DataSource:
     url: str
     source_type: str
     name: Optional[str] = None
+    file_type: Optional[str] = None
+    file_path: Optional[str] = None
+    file_content: Optional[bytes] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     headers: Dict[str, str] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
     
     def __post_init__(self):
         if self.name is None:
-            self.name = f"Source from {self.url}"
+            if self.file_path:
+                self.name = f"File: {Path(self.file_path).name}"
+            else:
+                self.name = f"Source from {self.url}"
 
 @dataclass
 class ProcessingResult:

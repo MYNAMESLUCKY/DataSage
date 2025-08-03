@@ -233,31 +233,150 @@ class RAGSystemApp:
         st.header("📥 Data Ingestion")
         st.write("Add and configure your data sources for processing.")
 
-        # Data source input
-        col1, col2 = st.columns([3, 1])
+        # Create tabs for different input methods
+        tab1, tab2 = st.tabs(["🌐 Web Sources", "📎 Upload Files"])
         
-        with col1:
-            source_url = st.text_input(
-                "Data Source URL",
-                placeholder="Enter URL to scrape data from...",
-                help="Supports web pages, APIs, and other online data sources"
+        with tab1:
+            # Data source input
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                source_url = st.text_input(
+                    "Data Source URL",
+                    placeholder="Enter URL to scrape data from...",
+                    help="Supports web pages, APIs, and other online data sources"
+                )
+            
+            with col2:
+                if st.button("Add Source", type="primary", disabled=not source_url):
+                    if source_url:
+                        try:
+                            # Validate and add source
+                            source = DataSource(
+                                url=source_url,
+                                source_type="web",
+                                name=f"Source {len(st.session_state.data_sources) + 1}"
+                            )
+                            st.session_state.data_sources.append(source)
+                            st.success(f"Added source: {source_url}")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error adding source: {str(e)}")
+        
+        with tab2:
+            # File upload section
+            st.subheader("Upload Documents")
+            st.write("Support for text, PDF, Excel, CSV, and Word documents")
+            
+            uploaded_files = st.file_uploader(
+                "Choose files to upload",
+                type=['txt', 'pdf', 'xlsx', 'xls', 'csv', 'docx', 'md', 'py', 'js', 'html', 'css'],
+                accept_multiple_files=True,
+                help="Upload documents in various formats (text, PDF, Excel, CSV, Word)"
             )
-        
-        with col2:
-            if st.button("Add Source", type="primary", disabled=not source_url):
-                if source_url:
-                    try:
-                        # Validate and add source
-                        source = DataSource(
-                            url=source_url,
-                            source_type="web",
-                            name=f"Source {len(st.session_state.data_sources) + 1}"
-                        )
-                        st.session_state.data_sources.append(source)
-                        st.success(f"Added source: {source_url}")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Error adding source: {str(e)}")
+            
+            if uploaded_files:
+                st.subheader("Selected Files")
+                
+                # Initialize uploaded files in session state
+                if 'uploaded_files_data' not in st.session_state:
+                    st.session_state.uploaded_files_data = []
+                
+                # Display uploaded files
+                for i, uploaded_file in enumerate(uploaded_files):
+                    with st.expander(f"📄 {uploaded_file.name} ({uploaded_file.size} bytes)", expanded=False):
+                        col1, col2, col3 = st.columns([2, 2, 1])
+                        
+                        with col1:
+                            st.write(f"**Name:** {uploaded_file.name}")
+                            st.write(f"**Size:** {uploaded_file.size:,} bytes")
+                        
+                        with col2:
+                            # Auto-detect file type
+                            file_extension = uploaded_file.name.split('.')[-1].lower()
+                            if file_extension in ['txt', 'md', 'py', 'js', 'html', 'css']:
+                                file_type = 'text'
+                            elif file_extension == 'pdf':
+                                file_type = 'pdf'
+                            elif file_extension in ['xlsx', 'xls']:
+                                file_type = 'excel'
+                            elif file_extension == 'csv':
+                                file_type = 'csv'
+                            elif file_extension == 'docx':
+                                file_type = 'docx'
+                            else:
+                                file_type = 'text'
+                            
+                            selected_type = st.selectbox(
+                                "File Type",
+                                options=['text', 'pdf', 'excel', 'csv', 'docx'],
+                                index=['text', 'pdf', 'excel', 'csv', 'docx'].index(file_type),
+                                key=f"type_{i}"
+                            )
+                        
+                        with col3:
+                            if st.button("Add File", key=f"add_file_{i}"):
+                                # Process and add the file
+                                try:
+                                    file_content = uploaded_file.read()
+                                    
+                                    # Create a DataSource for the file
+                                    source = DataSource(
+                                        url=uploaded_file.name,
+                                        source_type="file",
+                                        name=uploaded_file.name,
+                                        file_type=selected_type,
+                                        file_content=file_content
+                                    )
+                                    
+                                    st.session_state.data_sources.append(source)
+                                    st.success(f"Added file: {uploaded_file.name}")
+                                    st.rerun()
+                                    
+                                except Exception as e:
+                                    st.error(f"Error adding file: {str(e)}")
+                
+                # Add all files at once
+                if len(uploaded_files) > 1:
+                    st.divider()
+                    if st.button("Add All Files", type="primary"):
+                        added_count = 0
+                        for uploaded_file in uploaded_files:
+                            try:
+                                file_content = uploaded_file.read()
+                                
+                                # Auto-detect file type
+                                file_extension = uploaded_file.name.split('.')[-1].lower()
+                                if file_extension in ['txt', 'md', 'py', 'js', 'html', 'css']:
+                                    file_type = 'text'
+                                elif file_extension == 'pdf':
+                                    file_type = 'pdf'
+                                elif file_extension in ['xlsx', 'xls']:
+                                    file_type = 'excel'
+                                elif file_extension == 'csv':
+                                    file_type = 'csv'
+                                elif file_extension == 'docx':
+                                    file_type = 'docx'
+                                else:
+                                    file_type = 'text'
+                                
+                                source = DataSource(
+                                    url=uploaded_file.name,
+                                    source_type="file",
+                                    name=uploaded_file.name,
+                                    file_type=file_type,
+                                    file_content=file_content
+                                )
+                                
+                                st.session_state.data_sources.append(source)
+                                added_count += 1
+                                
+                            except Exception as e:
+                                st.error(f"Error adding {uploaded_file.name}: {str(e)}")
+                        
+                        if added_count > 0:
+                            st.success(f"Added {added_count} files successfully!")
+                            st.rerun()
 
         # Display current sources
         if st.session_state.data_sources:
@@ -270,6 +389,8 @@ class RAGSystemApp:
                     with col1:
                         st.write(f"**URL:** {source.url}")
                         st.write(f"**Type:** {source.source_type}")
+                        if source.source_type == "file" and source.file_type:
+                            st.write(f"**File Type:** {source.file_type}")
                     
                     with col2:
                         status = st.session_state.processing_status.get(source.url, "pending")

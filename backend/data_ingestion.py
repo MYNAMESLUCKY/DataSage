@@ -4,6 +4,8 @@ import time
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse, urljoin
 import hashlib
+import io
+from pathlib import Path
 
 # Web scraping and content extraction
 import requests
@@ -13,6 +15,12 @@ from bs4 import BeautifulSoup
 # Document processing
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+# File processing libraries
+import pandas as pd
+import PyPDF2
+import docx
+import xlrd
 
 from .utils import setup_logging, validate_url, clean_text
 from .models import DataSource
@@ -103,6 +111,60 @@ class DataIngestionService:
             
         except Exception as e:
             logger.error(f"Error ingesting content from {url}: {str(e)}")
+            return []
+    
+    def ingest_from_file(
+        self, 
+        file_content: bytes,
+        filename: str,
+        file_type: str,
+        chunk_size: int = 512, 
+        chunk_overlap: int = 50
+    ) -> List[Document]:
+        """
+        Ingest and process content from uploaded files
+        """
+        try:
+            logger.info(f"Processing uploaded file: {filename} (type: {file_type})")
+            
+            # Initialize text splitter
+            self._initialize_text_splitter(chunk_size, chunk_overlap)
+            
+            # Extract content based on file type
+            content = self._extract_file_content(file_content, filename, file_type)
+            
+            if not content:
+                logger.warning(f"No content extracted from file: {filename}")
+                return []
+            
+            # Create document with metadata
+            doc = Document(
+                page_content=content,
+                metadata={
+                    'source': filename,
+                    'file_type': file_type,
+                    'extraction_time': time.time(),
+                    'content_hash': hashlib.md5(content.encode()).hexdigest(),
+                    'content_length': len(content)
+                }
+            )
+            
+            # Split document into chunks
+            chunks = self.text_splitter.split_documents([doc])
+            
+            # Add chunk-specific metadata
+            for i, chunk in enumerate(chunks):
+                chunk.metadata.update({
+                    'chunk_id': i,
+                    'total_chunks': len(chunks),
+                    'chunk_size': len(chunk.page_content)
+                })
+            
+            logger.info(f"Successfully processed {len(chunks)} chunks from {filename}")
+            return chunks
+            
+        except Exception as e:
+            logger.error(f"Error processing file {filename}: {str(e)}")
             return []
     
     def _extract_web_content(self, url: str) -> str:
@@ -315,3 +377,147 @@ class DataIngestionService:
         except Exception as e:
             validation_result['issues'].append(f"Validation error: {str(e)}")
             return validation_result
+    
+    def _extract_file_content(self, file_content: bytes, filename: str, file_type: str) -> str:
+        """
+        Extract text content from different file types
+        """
+        try:
+            file_extension = Path(filename).suffix.lower()
+            
+            # Text files
+            if file_type == "text" or file_extension in ['.txt', '.md', '.py', '.js', '.html', '.css']:
+                return file_content.decode('utf-8', errors='ignore')
+            
+            # PDF files
+            elif file_type == "pdf" or file_extension == '.pdf':
+                return self._extract_pdf_content(file_content)
+            
+            # Excel files
+            elif file_type == "excel" or file_extension in ['.xlsx', '.xls']:
+                return self._extract_excel_content(file_content, file_extension)
+            
+            # CSV files
+            elif file_type == "csv" or file_extension == '.csv':
+                return self._extract_csv_content(file_content)
+            
+            # Word documents
+            elif file_type == "docx" or file_extension == '.docx':
+                return self._extract_docx_content(file_content)
+            
+            else:
+                logger.warning(f"Unsupported file type: {file_type} for file: {filename}")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"Error extracting content from {filename}: {str(e)}")
+            return ""
+    
+    def _extract_pdf_content(self, file_content: bytes) -> str:
+        """Extract text from PDF files"""
+        try:
+            pdf_file = io.BytesIO(file_content)
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            
+            text_content = []
+            for page_num in range(len(pdf_reader.pages)):
+                page = pdf_reader.pages[page_num]
+                text_content.append(page.extract_text())
+            
+            content = "\n".join(text_content)
+            logger.info(f"Extracted {len(content)} characters from PDF")
+            return clean_text(content)
+            
+        except Exception as e:
+            logger.error(f"Error extracting PDF content: {str(e)}")
+            return ""
+    
+    def _extract_excel_content(self, file_content: bytes, file_extension: str) -> str:
+        """Extract text from Excel files"""
+        try:
+            excel_file = io.BytesIO(file_content)
+            
+            # Read Excel file
+            if file_extension == '.xlsx':
+                df = pd.read_excel(excel_file, engine='openpyxl', sheet_name=None)
+            else:  # .xls
+                df = pd.read_excel(excel_file, engine='xlrd', sheet_name=None)
+            
+            text_content = []
+            
+            # Process all sheets
+            for sheet_name, data in df.items():
+                text_content.append(f"Sheet: {sheet_name}")
+                
+                # Convert DataFrame to text
+                # Include column headers
+                text_content.append(" | ".join(str(col) for col in data.columns))
+                
+                # Include data rows
+                for _, row in data.iterrows():
+                    row_text = " | ".join(str(val) for val in row.values if pd.notna(val))
+                    if row_text.strip():
+                        text_content.append(row_text)
+                
+                text_content.append("")  # Empty line between sheets
+            
+            content = "\n".join(text_content)
+            logger.info(f"Extracted {len(content)} characters from Excel file")
+            return clean_text(content)
+            
+        except Exception as e:
+            logger.error(f"Error extracting Excel content: {str(e)}")
+            return ""
+    
+    def _extract_csv_content(self, file_content: bytes) -> str:
+        """Extract text from CSV files"""
+        try:
+            csv_file = io.StringIO(file_content.decode('utf-8', errors='ignore'))
+            df = pd.read_csv(csv_file)
+            
+            text_content = []
+            
+            # Include column headers
+            text_content.append(" | ".join(str(col) for col in df.columns))
+            
+            # Include data rows
+            for _, row in df.iterrows():
+                row_text = " | ".join(str(val) for val in row.values if pd.notna(val))
+                if row_text.strip():
+                    text_content.append(row_text)
+            
+            content = "\n".join(text_content)
+            logger.info(f"Extracted {len(content)} characters from CSV file")
+            return clean_text(content)
+            
+        except Exception as e:
+            logger.error(f"Error extracting CSV content: {str(e)}")
+            return ""
+    
+    def _extract_docx_content(self, file_content: bytes) -> str:
+        """Extract text from Word documents"""
+        try:
+            docx_file = io.BytesIO(file_content)
+            doc = docx.Document(docx_file)
+            
+            text_content = []
+            
+            # Extract text from paragraphs
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    text_content.append(paragraph.text)
+            
+            # Extract text from tables
+            for table in doc.tables:
+                for row in table.rows:
+                    row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+                    if row_text:
+                        text_content.append(row_text)
+            
+            content = "\n".join(text_content)
+            logger.info(f"Extracted {len(content)} characters from Word document")
+            return clean_text(content)
+            
+        except Exception as e:
+            logger.error(f"Error extracting Word document content: {str(e)}")
+            return ""
