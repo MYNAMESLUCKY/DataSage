@@ -27,7 +27,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.available_models = ["deepseek-chat", "deepseek-coder", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -35,23 +35,34 @@ class RAGEngine:
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Initialize OpenAI client (supporting OpenRouter)
+            # Initialize AI client with priority: DeepSeek > OpenRouter > OpenAI
+            deepseek_api_key = os.getenv("DEEPSEEK_API")
             openrouter_api_key = os.getenv("OPENROUTER_API")
             openai_api_key = os.getenv("OPENAI_API_KEY")
             
-            if openrouter_api_key:
+            if deepseek_api_key:
+                self.openai_client = OpenAI(
+                    api_key=deepseek_api_key,
+                    base_url="https://api.deepseek.com"
+                )
+                self.api_provider = "DeepSeek"
+                self.default_model = "deepseek-chat"
+                logger.info("DeepSeek client initialized successfully")
+            elif openrouter_api_key:
                 self.openai_client = OpenAI(
                     api_key=openrouter_api_key,
                     base_url="https://openrouter.ai/api/v1"
                 )
                 self.api_provider = "OpenRouter"
+                self.default_model = "gpt-4o"
                 logger.info("OpenRouter client initialized successfully")
             elif openai_api_key:
                 self.openai_client = OpenAI(api_key=openai_api_key)
                 self.api_provider = "OpenAI"
+                self.default_model = "gpt-4o"
                 logger.info("OpenAI client initialized successfully")
             else:
-                logger.warning("No API key found (OpenRouter or OpenAI). AI models will not be available.")
+                logger.warning("No API key found (DeepSeek, OpenRouter, or OpenAI). AI models will not be available.")
             
             self.is_ready = True
             logger.info("RAG Engine initialized successfully")
@@ -70,20 +81,24 @@ class RAGEngine:
         self, 
         query: str, 
         relevant_docs: List[Document], 
-        llm_model: str = "gpt-4o"
+        llm_model: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Generate an intelligent answer based on the query and relevant documents
         """
         try:
+            # Use default model if none specified
+            if llm_model is None:
+                llm_model = getattr(self, 'default_model', 'gpt-4o')
+            
             logger.info(f"Generating answer using model: {llm_model}")
             
             # Prepare context from relevant documents
             context = self._prepare_context(relevant_docs)
             
-            # Generate answer based on selected model
-            if llm_model.startswith("gpt") and self.openai_client:
-                result = self._generate_openai_answer(query, context, llm_model)
+            # Generate answer based on available client and model
+            if self.openai_client:
+                result = self._generate_ai_answer(query, context, llm_model)
             else:
                 # Fallback to a simpler approach
                 result = self._generate_fallback_answer(query, context)
@@ -119,9 +134,12 @@ class RAGEngine:
         
         return "\n".join(context_parts)
     
-    def _generate_openai_answer(self, query: str, context: str, model: str) -> Dict[str, Any]:
-        """Generate answer using OpenAI models"""
+    def _generate_ai_answer(self, query: str, context: str, model: str) -> Dict[str, Any]:
+        """Generate answer using AI models (DeepSeek, OpenAI, etc.)"""
         try:
+            if not self.openai_client:
+                raise Exception("No AI client available")
+            
             # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
             # do not change this unless explicitly requested by the user
             
@@ -143,35 +161,40 @@ Please provide your answer in JSON format with the following structure:
 {{"answer": "your detailed answer here", "confidence": confidence_score_between_0_and_1}}
 """
 
-            response = self.openai_client.chat.completions.create(
-                model=model,
-                messages=[
+            # Adjust parameters based on model type
+            request_params = {
+                "model": model,
+                "messages": [
                     {"role": "system", "content": "You are a helpful AI assistant specialized in analyzing documents and providing accurate answers."},
                     {"role": "user", "content": prompt}
                 ],
-                response_format={"type": "json_object"},
-                temperature=0.3,
-                max_tokens=1000
-            )
+                "temperature": 0.3,
+                "max_tokens": 1000
+            }
+            
+            # Only add response_format for models that support it
+            if not model.startswith("deepseek"):
+                request_params["response_format"] = {"type": "json_object"}
+
+            response = self.openai_client.chat.completions.create(**request_params)
             
             content = response.choices[0].message.content
             if content:
-                result = json.loads(content)
+                # Try to parse JSON if available, otherwise use content directly
+                try:
+                    result = json.loads(content)
+                    return {
+                        'answer': result.get('answer', content),
+                        'confidence': result.get('confidence', 0.8)
+                    }
+                except json.JSONDecodeError:
+                    # If JSON parsing fails, use content directly
+                    return {
+                        'answer': content,
+                        'confidence': 0.8
+                    }
             else:
-                result = {"answer": "No response generated", "confidence": 0.0}
-            
-            return {
-                'answer': result.get('answer', 'I was unable to generate a proper response.'),
-                'confidence': result.get('confidence', 0.8)
-            }
-            
-        except json.JSONDecodeError:
-            # Fallback if JSON parsing fails
-            content = response.choices[0].message.content if 'response' in locals() else "Error parsing response"
-            return {
-                'answer': content,
-                'confidence': 0.7
-            }
+                return {"answer": "No response generated", "confidence": 0.0}
         except Exception as e:
             logger.error(f"OpenAI API error: {str(e)}")
             raise

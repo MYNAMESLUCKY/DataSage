@@ -40,11 +40,12 @@ Preferred communication style: Simple, everyday language.
 - **Storage**: FAISS for efficient similarity search and retrieval
 
 ## AI Model Integration
-- **Primary**: OpenRouter API supporting multiple models (GPT-4, Claude, Llama) for text generation
-- **Fallback**: Direct OpenAI API support as backup option
-- **Embeddings**: TF-IDF vectorization with scikit-learn for efficient similarity search
+- **Primary**: DeepSeek API for fast and efficient text generation (deepseek-chat, deepseek-coder)
+- **Secondary**: OpenRouter API supporting multiple models (GPT-4, Claude, Llama) as fallback
+- **Tertiary**: Direct OpenAI API support as final backup option
+- **Embeddings**: ChromaDB's built-in embedding models for vector representation
 - **Prompt Engineering**: ChatPromptTemplate for structured AI interactions
-- **Model Selection**: Configurable models including openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
+- **Model Selection**: Configurable models including deepseek-chat, deepseek-coder, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct
 
 ## Configuration Management
 - **Settings**: Centralized configuration with dataclasses for type safety

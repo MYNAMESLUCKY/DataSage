@@ -170,8 +170,8 @@ class RAGSystemApp:
         
         # Model selection
         selected_llm = st.sidebar.selectbox(
-            "LLM Model",
-            options=["gpt-4o", "gpt-3.5-turbo", "huggingface"],
+            "AI Model",
+            options=["deepseek-chat", "deepseek-coder", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"],
             index=0
         )
         st.session_state.selected_llm = selected_llm
