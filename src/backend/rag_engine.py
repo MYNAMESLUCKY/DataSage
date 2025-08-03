@@ -41,20 +41,29 @@ class RAGEngine:
             openrouter_api_key = os.getenv("OPENROUTER_API")
             openai_api_key = os.getenv("OPENAI_API_KEY")
             
-            # Try SARVAM_API first (most reliable)
+            # Force SARVAM_API as primary (it's available)
             if sarvam_api_key:
+                self.openai_client = OpenAI(
+                    api_key=sarvam_api_key,
+                    base_url="https://api.sarvam.ai/v1"
+                )
+                self.api_provider = "SARVAM"
+                self.default_model = "sarvam-m"
+                logger.info("SARVAM API client initialized successfully")
+                
+                # Test the connection
                 try:
-                    self.openai_client = OpenAI(
-                        api_key=sarvam_api_key,
-                        base_url="https://api.sarvam.ai/v1"
+                    test_response = self.openai_client.chat.completions.create(
+                        model="sarvam-m",
+                        messages=[{"role": "user", "content": "test"}],
+                        max_tokens=5
                     )
-                    self.api_provider = "SARVAM"
-                    self.default_model = "sarvam-m"
-                    logger.info("SARVAM API client initialized successfully")
+                    logger.info("SARVAM API connection verified")
                 except Exception as e:
-                    logger.warning(f"SARVAM API failed: {e}, trying DeepSeek...")
-            # Try DeepSeek native API second
-            elif deepseek_api_key:
+                    logger.warning(f"SARVAM API test failed: {e}, trying DeepSeek...")
+                    sarvam_api_key = None  # Force fallback
+            # Try DeepSeek native API if SARVAM failed
+            if not sarvam_api_key and deepseek_api_key:
                 try:
                     # First try as native DeepSeek API
                     self.openai_client = OpenAI(
@@ -309,6 +318,7 @@ Please provide your answer in JSON format:
                     break
         
         # If all retries failed, raise the last error
+        error_str = error_str if 'error_str' in locals() else "Unknown error"
         raise Exception(f"Failed to generate AI answer after {max_retries} attempts: {error_str}")
     
     def _try_fallback_model(self) -> bool:
