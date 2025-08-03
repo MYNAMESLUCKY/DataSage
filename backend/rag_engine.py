@@ -27,7 +27,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["deepseek-chat", "deepseek-coder", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.available_models = ["deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -35,30 +35,12 @@ class RAGEngine:
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Initialize AI client with priority: OpenAI > OpenRouter > DeepSeek (temporarily until DeepSeek key is fixed)
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            openrouter_api_key = os.getenv("OPENROUTER_API")
+            # Initialize AI client with priority: DeepSeek (as requested by user)
             deepseek_api_key = os.getenv("DEEPSEEK_API")
+            openrouter_api_key = os.getenv("OPENROUTER_API")
+            openai_api_key = os.getenv("OPENAI_API_KEY")
             
-            if openai_api_key:
-                self.openai_client = OpenAI(api_key=openai_api_key)
-                self.api_provider = "OpenAI"
-                self.default_model = "gpt-4o"
-                logger.info("OpenAI client initialized successfully")
-            elif openrouter_api_key:
-                self.openai_client = OpenAI(
-                    api_key=openrouter_api_key,
-                    base_url="https://openrouter.ai/api/v1"
-                )
-                self.api_provider = "OpenRouter"
-                self.default_model = "gpt-4o"
-                logger.info("OpenRouter client initialized successfully")
-            elif openai_api_key:
-                self.openai_client = OpenAI(api_key=openai_api_key)
-                self.api_provider = "OpenAI"
-                self.default_model = "gpt-4o"
-                logger.info("OpenAI client initialized successfully")
-            elif deepseek_api_key:
+            if deepseek_api_key:
                 self.openai_client = OpenAI(
                     api_key=deepseek_api_key,
                     base_url="https://api.deepseek.com"
@@ -66,8 +48,13 @@ class RAGEngine:
                 self.api_provider = "DeepSeek"
                 self.default_model = "deepseek-chat"
                 logger.info("DeepSeek client initialized successfully")
+            elif openai_api_key:
+                self.openai_client = OpenAI(api_key=openai_api_key)
+                self.api_provider = "OpenAI"
+                self.default_model = "gpt-4o"
+                logger.info("OpenAI client initialized successfully")
             else:
-                logger.warning("No API key found (OpenAI, OpenRouter, or DeepSeek). AI models will not be available.")
+                logger.warning("No API key found (OpenRouter, DeepSeek, or OpenAI). AI models will not be available.")
             
             self.is_ready = True
             logger.info("RAG Engine initialized successfully")
@@ -177,8 +164,8 @@ Please provide your answer in JSON format with the following structure:
                 "max_tokens": 1000
             }
             
-            # Only add response_format for models that support it
-            if not model.startswith("deepseek"):
+            # Only add response_format for models that support it (exclude deepseek and kimi models)
+            if not model.startswith("deepseek") and not model.startswith("moonshotai/kimi"):
                 request_params["response_format"] = {"type": "json_object"}
 
             response = self.openai_client.chat.completions.create(**request_params)
