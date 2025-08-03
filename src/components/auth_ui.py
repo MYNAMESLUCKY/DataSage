@@ -75,55 +75,101 @@ def show_firebase_google_login():
         col1, col2, col3 = st.columns([1, 2, 1])
         
         with col2:
+            # Display debug information
+            web_api_key = os.getenv("FIREBASE_WEB_API_KEY")
+            if not web_api_key or web_api_key == "AIzaSyDummyWebAPIKey":
+                st.warning("⚠️ Firebase Web API Key not configured. The button won't work until you add FIREBASE_WEB_API_KEY to your environment variables.")
+                st.info("Get this from Firebase Console → Project Settings → Web API Key")
+            
             # Use Streamlit button instead of HTML button for better compatibility
             if st.button("🚀 Sign in with Google", 
                         key="google_login_btn",
                         help="Click to sign in with your Google account",
                         use_container_width=True):
                 
+                if not web_api_key or web_api_key == "AIzaSyDummyWebAPIKey":
+                    st.error("❌ Cannot authenticate: Firebase Web API Key is required")
+                    st.info("Please add your FIREBASE_WEB_API_KEY to environment variables")
+                    return
+                
                 # Store Firebase config in session state for JavaScript access
                 st.session_state.firebase_config = firebase_config
+                st.session_state.show_firebase_auth = True
+                st.rerun()
+            
+            # Show Firebase authentication popup if triggered
+            if st.session_state.get('show_firebase_auth', False):
+                st.session_state.show_firebase_auth = False
                 
-                # Trigger Firebase authentication
+                # Embed Firebase authentication script
                 st.markdown(f"""
+                <div id="firebase-auth-container" style="text-align: center; padding: 20px;">
+                    <p>Opening Google sign-in popup...</p>
+                    <p><small>If popup doesn't appear, check if popups are blocked</small></p>
+                </div>
+                
                 <script type="module">
                 import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
                 import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
                 
+                console.log('Firebase script loaded');
+                
                 // Firebase configuration
                 const firebaseConfig = {firebase_config};
+                console.log('Firebase config:', firebaseConfig);
                 
-                // Initialize Firebase
-                const app = initializeApp(firebaseConfig);
-                const auth = getAuth(app);
-                
-                // Google Sign-In
-                async function signInWithGoogle() {{
+                try {{
+                    // Initialize Firebase
+                    const app = initializeApp(firebaseConfig);
+                    const auth = getAuth(app);
+                    console.log('Firebase initialized successfully');
+                    
+                    // Google Sign-In
                     const provider = new GoogleAuthProvider();
                     provider.addScope('email');
                     provider.addScope('profile');
                     
-                    try {{
-                        console.log('Starting Google sign-in...');
-                        const result = await signInWithPopup(auth, provider);
-                        console.log('Sign-in successful:', result.user.email);
+                    console.log('Starting Google sign-in popup...');
+                    
+                    signInWithPopup(auth, provider)
+                        .then(async (result) => {{
+                            console.log('Sign-in successful:', result.user.email);
+                            
+                            const idToken = await getIdToken(result.user);
+                            console.log('ID token obtained');
+                            
+                            // Redirect with token
+                            const url = new URL(window.location);
+                            url.searchParams.set('firebase_token', idToken);
+                            window.location.href = url.toString();
+                        }})
+                        .catch((error) => {{
+                            console.error('Firebase authentication error:', error);
+                            
+                            let errorMessage = 'Authentication failed: ' + error.message;
+                            
+                            if (error.code === 'auth/popup-blocked') {{
+                                errorMessage = 'Popup was blocked. Please allow popups for this site and try again.';
+                            }} else if (error.code === 'auth/popup-closed-by-user') {{
+                                errorMessage = 'Sign-in cancelled by user.';
+                            }} else if (error.code === 'auth/invalid-api-key') {{
+                                errorMessage = 'Invalid Firebase API key. Please check your configuration.';
+                            }}
+                            
+                            alert(errorMessage);
+                            
+                            // Update the container with error message
+                            document.getElementById('firebase-auth-container').innerHTML = 
+                                '<p style="color: red;">❌ ' + errorMessage + '</p>';
+                        }});
                         
-                        const idToken = await getIdToken(result.user);
-                        console.log('ID token obtained');
-                        
-                        // Redirect with token
-                        const url = new URL(window.location);
-                        url.searchParams.set('firebase_token', idToken);
-                        window.location.href = url.toString();
-                        
-                    }} catch (error) {{
-                        console.error('Firebase authentication error:', error);
-                        alert('Authentication failed: ' + error.message);
-                    }}
+                }} catch (initError) {{
+                    console.error('Firebase initialization error:', initError);
+                    alert('Firebase initialization failed: ' + initError.message);
+                    
+                    document.getElementById('firebase-auth-container').innerHTML = 
+                        '<p style="color: red;">❌ Firebase initialization failed</p>';
                 }}
-                
-                // Auto-trigger sign-in
-                signInWithGoogle();
                 </script>
                 """, unsafe_allow_html=True)
         
