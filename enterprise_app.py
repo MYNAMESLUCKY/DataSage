@@ -116,9 +116,13 @@ def show_rag_system():
     """Display the main RAG system interface"""
     st.markdown('<div class="enterprise-card">', unsafe_allow_html=True)
     
-    # Initialize the enterprise UI
+    # Initialize the RAG system API and enterprise UI
+    if 'rag_api' not in st.session_state:
+        from src.backend.api import RAGSystemAPI
+        st.session_state.rag_api = RAGSystemAPI()
+    
     if 'enterprise_ui' not in st.session_state:
-        st.session_state.enterprise_ui = EnterpriseUI()
+        st.session_state.enterprise_ui = EnterpriseUI(st.session_state.rag_api)
     
     # Display the RAG interface
     st.session_state.enterprise_ui.render()
