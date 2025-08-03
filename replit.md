@@ -15,6 +15,15 @@ The application allows users to:
 
 Preferred communication style: Simple, everyday language.
 
+# Scaling Requirements (Updated 2025-08-03)
+
+User has requested comprehensive scaling analysis for enterprise deployment. Key focus areas identified:
+- Multi-user authentication and security
+- Performance optimization for 3,284+ documents
+- Advanced analytics and monitoring
+- Enterprise integrations and API development
+- Scalable infrastructure beyond single-instance architecture
+
 # System Architecture
 
 ## Frontend Architecture
