@@ -66,10 +66,16 @@ class HybridRAGProcessor:
             
             cached_result = self.cache_manager.get_cached_query_result(query, cache_key_params)
             if cached_result:
-                logger.info("Retrieved complete result from cache")
-                cached_result['from_cache'] = True
-                cached_result['processing_time'] = time.time() - start_time
-                return cached_result
+                # Skip cached errors - force fresh processing for better accuracy
+                if (cached_result.get('status') == 'error' or 
+                    'error' in str(cached_result.get('answer', '')).lower() or
+                    'nonetype' in str(cached_result.get('answer', '')).lower()):
+                    logger.info("Cached result contains error - forcing fresh processing for accuracy")
+                else:
+                    logger.info("Retrieved valid result from cache")
+                    cached_result['from_cache'] = True
+                    cached_result['processing_time'] = time.time() - start_time
+                    return cached_result
             
             # STEP 0: Advanced Query Processing
             logger.info("STEP 0: Processing query with advanced techniques...")
