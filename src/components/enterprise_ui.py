@@ -340,7 +340,7 @@ class EnterpriseUI:
             with col3:
                 selected_model = st.selectbox(
                     "AI Model",
-                    options=["moonshotai/kimi-k2:free", "deepseek-chat", "gpt-4o", "anthropic/claude-3.5-sonnet"],
+                    options=["sarvam-m", "deepseek-chat", "moonshotai/kimi-k2:free", "gpt-4o", "anthropic/claude-3.5-sonnet"],
                     index=0,
                     help="Choose the AI model for generating answers"
                 )

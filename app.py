@@ -165,7 +165,7 @@ class RAGSystemApp:
         # Model selection
         selected_llm = st.sidebar.selectbox(
             "AI Model",
-            options=["moonshotai/kimi-k2:free", "deepseek-chat", "deepseek-coder", "gpt-4o", "openai/gpt-4o"],
+            options=["sarvam-m", "deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "openai/gpt-4o"],
             index=0
         )
         st.session_state.selected_llm = selected_llm
@@ -394,7 +394,7 @@ class RAGSystemApp:
             with st.spinner("🔍 Processing your query..."):
                 result = self.api.query(
                     query=query, 
-                    llm_model=st.session_state.get('selected_llm', 'moonshotai/kimi-k2:free')
+                    llm_model=st.session_state.get('selected_llm', 'sarvam-m')
                 )
             
             if result['status'] == 'success':
