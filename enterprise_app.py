@@ -258,20 +258,33 @@ def show_analytics():
         st.plotly_chart(fig, use_container_width=True)
     
     with tabs[1]:
-        st.subheader("System Performance")
+        st.subheader("Enhanced System Performance")
         
-        # Performance metrics
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("Response Times")
-            response_times = [2.1, 3.4, 2.8, 4.1, 3.2, 2.9, 3.8]
-            st.line_chart(response_times)
-        
-        with col2:
-            st.subheader("Knowledge Base Growth")
-            kb_sizes = [3200, 3250, 3310, 3380, 3420, 3465, 3500]
-            st.area_chart(kb_sizes)
+        # Import performance monitoring
+        try:
+            from src.components.performance_monitor import show_performance_dashboard, show_advanced_features_status
+            
+            # Show real performance data
+            show_performance_dashboard()
+            
+            st.markdown("---")
+            
+            # Show advanced features status
+            show_advanced_features_status()
+            
+        except ImportError:
+            # Fallback to basic metrics
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.subheader("Response Times")
+                response_times = [2.1, 3.4, 2.8, 4.1, 3.2, 2.9, 3.8]
+                st.line_chart(response_times)
+            
+            with col2:
+                st.subheader("Knowledge Base Growth")
+                kb_sizes = [3200, 3250, 3310, 3380, 3420, 3465, 3500]
+                st.area_chart(kb_sizes)
     
     with tabs[2]:
         st.subheader("Usage Statistics")

@@ -7,6 +7,9 @@ from .tavily_integration import TavilyIntegrationService
 from .rag_improvements import EnhancedRetrieval
 from .training_system import get_training_system
 from .web_cache_db import WebCacheDatabase
+from .query_processor import AdvancedQueryProcessor
+from .reranker import AdvancedReranker
+from .enhanced_cache import get_cache_manager
 
 logger = setup_logging(__name__)
 
@@ -27,6 +30,11 @@ class HybridRAGProcessor:
         self.tavily_service = TavilyIntegrationService()
         self.training_system = get_training_system()
         self.web_cache = WebCacheDatabase()
+        
+        # Initialize advanced processing components
+        self.query_processor = AdvancedQueryProcessor(rag_engine)
+        self.reranker = AdvancedReranker(rag_engine)
+        self.cache_manager = get_cache_manager()
     
     def process_intelligent_query(
         self, 
@@ -46,18 +54,66 @@ class HybridRAGProcessor:
         start_time = time.time()
         
         try:
-            logger.info(f"Starting intelligent hybrid RAG processing: {query[:100]}...")
+            logger.info(f"Starting advanced hybrid RAG processing: {query[:100]}...")
             
-            # STEP 1: Check existing knowledge base first
-            logger.info("STEP 1: Checking existing knowledge base...")
-            kb_docs = self.enhanced_retrieval.enhanced_similarity_search(
-                self.vector_store,
-                query, 
-                k=10
-            )
+            # STEP -1: Check cache first
+            cache_key_params = {
+                'use_web_search': use_web_search,
+                'max_web_results': max_web_results,
+                'llm_model': llm_model
+            }
+            
+            cached_result = self.cache_manager.get_cached_query_result(query, cache_key_params)
+            if cached_result:
+                logger.info("Retrieved complete result from cache")
+                cached_result['from_cache'] = True
+                cached_result['processing_time'] = time.time() - start_time
+                return cached_result
+            
+            # STEP 0: Advanced Query Processing
+            logger.info("STEP 0: Processing query with advanced techniques...")
+            query_analysis = self.query_processor.process_query_comprehensive(query)
+            
+            # Extract processing results
+            sub_queries = query_analysis.get('sub_queries', [query])
+            query_rewrites = query_analysis.get('query_rewrites', {'main': [query]})
+            routing_info = query_analysis.get('routing', {})
+            
+            logger.info(f"Query analysis: {len(sub_queries)} sub-queries, {query_analysis.get('total_queries', 1)} total variations")
+            
+            # STEP 1: Enhanced knowledge base search with query variations
+            logger.info("STEP 1: Enhanced knowledge base search with query variations...")
+            
+            all_kb_docs = []
+            # Search with all query variations
+            for query_set_name, queries in query_rewrites.items():
+                for variant_query in queries:
+                    kb_docs = self.enhanced_retrieval.enhanced_similarity_search(
+                        self.vector_store,
+                        variant_query, 
+                        k=8  # Fewer per query since we have multiple queries
+                    )
+                    all_kb_docs.extend(kb_docs)
+            
+            # Remove duplicates while preserving order
+            seen_docs = set()
+            unique_kb_docs = []
+            for doc in all_kb_docs:
+                doc_id = getattr(doc, 'page_content', str(doc))[:100]  # Use content snippet as ID
+                if doc_id not in seen_docs:
+                    seen_docs.add(doc_id)
+                    unique_kb_docs.append(doc)
+            
+            # Rerank the combined results
+            if unique_kb_docs:
+                logger.info(f"Reranking {len(unique_kb_docs)} unique knowledge base documents...")
+                reranked_kb = self.reranker.rerank_documents(query, unique_kb_docs, top_k=10)
+                kb_docs = [doc for doc, score in reranked_kb]
+            else:
+                kb_docs = []
             
             kb_has_relevant_data = len(kb_docs) > 0
-            logger.info(f"Knowledge base check: Found {len(kb_docs)} relevant documents")
+            logger.info(f"Enhanced knowledge base search: Found {len(kb_docs)} relevant documents after reranking")
             
             # STEP 2: Always fetch web data for comparison/updates
             web_results = []
@@ -203,7 +259,7 @@ class HybridRAGProcessor:
             
             logger.info(f"Intelligent hybrid query completed in {processing_time:.2f} seconds")
             
-            return {
+            final_result = {
                 'status': 'success',
                 'answer': result['answer'],
                 'sources': result['sources'],
@@ -216,8 +272,21 @@ class HybridRAGProcessor:
                 'knowledge_base_updated': should_update_kb,
                 'kb_documents_found': len(kb_docs),
                 'web_results_used': len(web_docs),
-                'hybrid_processing': True
+                'hybrid_processing': True,
+                'query_processing': {
+                    'sub_queries': len(sub_queries),
+                    'query_variations': query_analysis.get('total_queries', 1),
+                    'routing_strategy': routing_info.get('strategy', 'hybrid'),
+                    'processing_time': query_analysis.get('processing_time', 0)
+                },
+                'reranking_applied': True,
+                'from_cache': False
             }
+            
+            # Cache the complete result for future queries
+            self.cache_manager.cache_query_result(query, final_result, cache_key_params)
+            
+            return final_result
             
         except Exception as e:
             processing_time = time.time() - start_time
