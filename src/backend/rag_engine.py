@@ -252,9 +252,9 @@ Please provide your answer in JSON format:
                     "model_used": model,
                     "api_provider": self.api_provider
                 }
-            
+        
+        # Use advanced rate limiter for intelligent backoff
         try:
-            # Use advanced rate limiter for intelligent backoff
             return rate_limited_api_call(
                 global_rate_limiter, 
                 query, 
