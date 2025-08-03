@@ -39,17 +39,17 @@ class AdvancedQueryProcessor:
                 logger.info(f"Using RAG engine client with model: {self.model}")
                 return
             
-            # Initialize our own client
+            # Initialize our own client - SARVAM only
             sarvam_api_key = os.getenv("SARVAM_API")
-            if sarvam_api_key:
-                self.client = OpenAI(
-                    api_key=sarvam_api_key,
-                    base_url="https://api.sarvam.ai/v1"
-                )
-                self.model = "sarvam-m"
-                logger.info("Query processor initialized with SARVAM API")
-            else:
-                logger.warning("No API key available for query processing")
+            if not sarvam_api_key:
+                raise Exception("SARVAM_API key required for query processing")
+            
+            self.client = OpenAI(
+                api_key=sarvam_api_key,
+                base_url="https://api.sarvam.ai/v1"
+            )
+            self.model = "sarvam-m"
+            logger.info("Query processor initialized with SARVAM API (SARVAM-only mode)")
                 
         except Exception as e:
             logger.error(f"Failed to initialize query processor: {e}")

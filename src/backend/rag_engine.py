@@ -27,7 +27,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["sarvam-m", "deepseek-chat", "deepseek-coder", "moonshotai/kimi-k2:free", "gpt-4o", "gpt-3.5-turbo", "openai/gpt-4o", "openai/gpt-3.5-turbo", "anthropic/claude-3.5-sonnet", "meta-llama/llama-3.1-8b-instruct"]
+        self.available_models = ["sarvam-m"]  # SARVAM only
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -62,43 +62,11 @@ class RAGEngine:
                 except Exception as e:
                     logger.warning(f"SARVAM API test failed: {e}, trying DeepSeek...")
                     sarvam_api_key = None  # Force fallback
-            # Try DeepSeek native API if SARVAM failed
-            if not sarvam_api_key and deepseek_api_key:
-                try:
-                    # First try as native DeepSeek API
-                    self.openai_client = OpenAI(
-                        api_key=deepseek_api_key,
-                        base_url="https://api.deepseek.com"
-                    )
-                    self.api_provider = "DeepSeek"
-                    self.default_model = "deepseek-chat"
-                    logger.info("DeepSeek client initialized successfully")
-                except Exception as e:
-                    logger.warning(f"DeepSeek API failed: {e}, trying OpenRouter...")
-                    # Fallback to OpenRouter if DeepSeek fails
-                    if deepseek_api_key.startswith("sk-or-v1"):
-                        self.openai_client = OpenAI(
-                            api_key=deepseek_api_key,
-                            base_url="https://openrouter.ai/api/v1"
-                        )
-                        self.api_provider = "OpenRouter"
-                        self.default_model = "deepseek-chat"  # Use DeepSeek model on OpenRouter
-                        logger.info("OpenRouter client initialized with DeepSeek model")
-            elif openrouter_api_key:
-                self.openai_client = OpenAI(
-                    api_key=openrouter_api_key,
-                    base_url="https://openrouter.ai/api/v1"
-                )
-                self.api_provider = "OpenRouter"
-                self.default_model = "moonshotai/kimi-k2:free"
-                logger.info("OpenRouter client initialized successfully with Kimi model")
-            elif openai_api_key:
-                self.openai_client = OpenAI(api_key=openai_api_key)
-                self.api_provider = "OpenAI"
-                self.default_model = "gpt-4o"
-                logger.info("OpenAI client initialized successfully")
-            else:
-                logger.warning("No API key found (OpenRouter, DeepSeek, or OpenAI). AI models will not be available.")
+            # Only allow SARVAM API - no fallbacks
+            if not sarvam_api_key:
+                raise Exception("SARVAM_API key is required. No other providers supported.")
+            
+            logger.info("SARVAM-only configuration enforced")
             
             self.is_ready = True
             logger.info("RAG Engine initialized successfully")
@@ -323,34 +291,9 @@ Please provide your answer in JSON format:
         raise Exception(f"Failed to generate AI answer after {max_retries} attempts: {error_str}")
     
     def _try_fallback_model(self) -> bool:
-        """Try to switch to a fallback API provider"""
-        try:
-            # Try DeepSeek if currently using SARVAM and DeepSeek key is available
-            if self.api_provider == "SARVAM":
-                deepseek_api_key = os.getenv("DEEPSEEK_API")
-                if deepseek_api_key:
-                    self.openai_client = OpenAI(
-                        api_key=deepseek_api_key,
-                        base_url="https://api.deepseek.com"
-                    )
-                    self.api_provider = "DeepSeek"
-                    self.default_model = "deepseek-chat"
-                    logger.info("Switched to DeepSeek API as fallback")
-                    return True
-            
-            # Try OpenAI if available
-            openai_api_key = os.getenv("OPENAI_API_KEY")
-            if openai_api_key:
-                self.openai_client = OpenAI(api_key=openai_api_key)
-                self.api_provider = "OpenAI"
-                self.default_model = "gpt-4o"
-                logger.info("Switched to OpenAI API as fallback")
-                return True
-                
-            return False
-        except Exception as e:
-            logger.error(f"Failed to switch to fallback model: {e}")
-            return False
+        """No fallback models allowed - SARVAM only"""
+        logger.warning("Fallback models disabled - SARVAM API only")
+        return False
     
     def _generate_fallback_answer(self, query: str, context: str) -> Dict[str, Any]:
         """Generate a fallback answer when AI models are not available"""

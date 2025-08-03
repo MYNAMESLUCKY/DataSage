@@ -40,15 +40,15 @@ class AdvancedReranker:
                 return
             
             sarvam_api_key = os.getenv("SARVAM_API")
-            if sarvam_api_key:
-                self.client = OpenAI(
-                    api_key=sarvam_api_key,
-                    base_url="https://api.sarvam.ai/v1"
-                )
-                self.model = "sarvam-m"
-                logger.info("Reranker initialized with SARVAM API")
-            else:
-                logger.warning("No API key available for reranking")
+            if not sarvam_api_key:
+                raise Exception("SARVAM_API key required for reranking")
+            
+            self.client = OpenAI(
+                api_key=sarvam_api_key,
+                base_url="https://api.sarvam.ai/v1"
+            )
+            self.model = "sarvam-m"
+            logger.info("Reranker initialized with SARVAM API (SARVAM-only mode)")
                 
         except Exception as e:
             logger.error(f"Failed to initialize reranker: {e}")
