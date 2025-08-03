@@ -12,7 +12,7 @@ from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 import time
 
-from .utils import setup_logging
+from ..utils.utils import setup_logging
 
 logger = setup_logging(__name__)
 

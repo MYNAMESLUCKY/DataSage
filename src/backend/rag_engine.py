@@ -13,7 +13,7 @@ from langchain.schema.output_parser import StrOutputParser
 # OpenAI and HuggingFace
 from openai import OpenAI
 
-from .utils import setup_logging, cache_result
+from ..utils.utils import setup_logging, cache_result
 from .vector_store import VectorStoreManager
 
 logger = setup_logging(__name__)

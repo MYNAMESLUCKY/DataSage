@@ -14,7 +14,7 @@ from urllib.parse import quote
 import xml.etree.ElementTree as ET
 from io import StringIO
 
-from .utils import setup_logging
+from ..utils.utils import setup_logging
 from .vector_store_chroma import ChromaVectorStoreManager
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter

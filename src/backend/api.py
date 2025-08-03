@@ -11,7 +11,7 @@ from .data_ingestion import DataIngestionService
 from .vector_store import VectorStoreManager
 from .wikipedia_ingestion import WikipediaIngestionService
 from .models import DataSource, QueryResult, ProcessingStatus
-from .utils import setup_logging, performance_monitor
+from ..utils.utils import setup_logging, performance_monitor
 from .cache_manager import get_cache_manager, ContextManager
 from .async_processor import get_async_processor, ProcessingTask
 from .rag_improvements import EnhancedRetrieval, RetrievalAuditor

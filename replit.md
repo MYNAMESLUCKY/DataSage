@@ -42,7 +42,30 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 - Query analysis and optimization suggestions
 - Comprehensive training insights and metrics export
 
-# System Architecture
+# System Architecture (Updated 2025-08-03)
+
+## Clean Project Structure
+```
+├── app.py                    # Main Streamlit application entry point
+├── src/                      # Organized source code directory
+│   ├── backend/             # Core RAG system logic
+│   │   ├── api.py          # Main API orchestrator
+│   │   ├── rag_engine.py   # AI model interactions
+│   │   ├── vector_store_chroma.py # ChromaDB integration
+│   │   ├── data_ingestion.py # Document processing
+│   │   ├── rag_improvements.py # Enhanced retrieval logic
+│   │   └── ...
+│   ├── components/          # UI components and interfaces
+│   │   ├── ui_components.py # Reusable UI elements
+│   │   ├── enterprise_ui.py # Analytics dashboard
+│   │   └── ...
+│   ├── config/             # Configuration management
+│   │   └── settings.py     # System settings
+│   └── utils/              # Shared utilities
+│       └── utils.py        # Logging and performance monitoring
+├── chroma_db/              # Vector database storage
+└── README.md               # Project documentation
+```
 
 ## Frontend Architecture
 - **Framework**: Streamlit for rapid web application development
@@ -50,6 +73,7 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
 - **Components**: Modular UI components for reusability (status badges, metric cards, data source management)
 - **Styling**: Custom CSS for professional appearance with gradients and responsive design
 - **Visualization**: Plotly integration for metrics and analytics
+- **Copy Functionality**: Simple text area implementation for easy answer copying
 
 ## Backend Architecture
 - **Pattern**: Service-oriented architecture with clear separation of concerns
@@ -59,14 +83,13 @@ User has requested comprehensive scaling analysis for enterprise deployment AND 
   - `VectorStoreManager`: Manages ChromaDB vector storage and similarity search
   - `WikipediaIngestionService`: Specialized service for Wikipedia article ingestion with rate limiting
   - `RAGSystemAPI`: Main API layer that coordinates all services
-  - **NEW: `EnhancedRetrieval`**: Multi-strategy retrieval with intelligent ranking
-  - **NEW: `AdvancedEmbeddingsManager`**: Better embeddings with caching and optimization
-  - **NEW: `RAGTrainingSystem`**: Continuous improvement and performance monitoring
-  - **NEW: `SearchFallbackService`**: External search API integration for missing knowledge
+  - `EnhancedRetrieval`: Multi-strategy retrieval with intelligent ranking
+  - `AdvancedEmbeddingsManager`: Better embeddings with caching and optimization
+  - `RAGTrainingSystem`: Continuous improvement and performance monitoring
+  - `SearchFallbackService`: External search API integration for missing knowledge
 - **Concurrency**: ThreadPoolExecutor for parallel processing with Wikipedia rate limiting
 - **Error Handling**: Comprehensive logging and graceful failure handling
-- **Wikipedia Features**: Smart article selection, category-based filtering, random sampling, and content chunking
-- **Training Features**: Query analysis, feedback integration, performance metrics, and improvement recommendations
+- **Clean Architecture**: Organized src/ structure with proper import management
 
 ## Data Processing Pipeline
 - **Text Extraction**: Uses `trafilatura` and `BeautifulSoup` for web content extraction

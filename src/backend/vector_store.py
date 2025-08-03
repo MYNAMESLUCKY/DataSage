@@ -16,7 +16,7 @@ from .vector_store_chroma import ChromaVectorStoreManager
 # LangChain
 from langchain.schema import Document
 
-from .utils import setup_logging, performance_monitor
+from ..utils.utils import setup_logging, performance_monitor
 from config.settings import settings
 
 logger = setup_logging(__name__)

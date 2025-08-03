@@ -6,16 +6,15 @@ from typing import Dict, List, Optional
 import os
 import sys
 
-# Add backend to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
-sys.path.append(os.path.join(os.path.dirname(__file__), 'components'))
+# Add src to path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 
-from backend.api import RAGSystemAPI
-from backend.models import DataSource, ProcessingStatus, QueryResult
-from components.ui_components import UIComponents
-from components.data_sources import DataSourceManager
-from components.enterprise_ui import EnterpriseUI
-from config.settings import Settings
+from src.backend.api import RAGSystemAPI
+from src.backend.models import DataSource, ProcessingStatus, QueryResult
+from src.components.ui_components import UIComponents
+from src.components.data_sources import DataSourceManager
+from src.components.enterprise_ui import EnterpriseUI
+from src.config.settings import Settings
 
 class RAGSystemApp:
     def __init__(self):
