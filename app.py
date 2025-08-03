@@ -458,14 +458,22 @@ class RAGSystemApp:
             use_web_search = st.session_state.get('use_web_search', True)
             
             with st.spinner("🔍 Processing your query..." + (" (with web search)" if use_web_search else "")):
-                if use_web_search and web_processor.tavily_service.is_available():
-                    result = web_processor.process_query_with_web(
-                        query=query,
-                        llm_model=st.session_state.get('selected_llm', 'sarvam-m'),
-                        use_web_search=True,
-                        max_web_results=st.session_state.get('max_web_results', 5),
-                        prioritize_web=st.session_state.get('prioritize_web', True)
-                    )
+                # Always try web search first if enabled
+                if use_web_search:
+                    try:
+                        result = web_processor.process_query_with_web(
+                            query=query,
+                            llm_model=st.session_state.get('selected_llm', 'sarvam-m'),
+                            use_web_search=True,
+                            max_web_results=st.session_state.get('max_web_results', 5),
+                            prioritize_web=st.session_state.get('prioritize_web', True)
+                        )
+                    except Exception as e:
+                        st.warning(f"Web search failed, using knowledge base only: {str(e)}")
+                        result = self.api.query(
+                            query=query, 
+                            llm_model=st.session_state.get('selected_llm', 'sarvam-m')
+                        )
                 else:
                     result = self.api.query(
                         query=query, 
