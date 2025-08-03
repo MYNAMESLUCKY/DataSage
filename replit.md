@@ -21,12 +21,15 @@ Preferred communication style: Simple, everyday language.
 
 User has requested comprehensive real-time web search integration with database caching for any question:
 
-## Web Search Integration Features:
-- Real-time web search using Tavily API for any question
-- PostgreSQL database caching for search results and content
-- Intelligent cache management with automatic cleanup
-- Web content prioritization over existing documents
-- Hybrid RAG combining knowledge base with live web data
+## Intelligent Hybrid RAG Features:
+- **Smart Knowledge Comparison**: Checks existing documents first, then compares with live web data
+- **Automatic Knowledge Base Updates**: Adds new web information to vector store when gaps are detected
+- **Intelligent Processing Strategies**: 
+  - Hybrid comparison when both KB and web data exist
+  - Knowledge base update when KB lacks information
+  - Fallback to KB-only when web search fails
+- **PostgreSQL database caching** for search results and content optimization
+- **Real-time decision making** for optimal answer generation
 
 ## 8-Point RAG Improvement Plan - FULLY IMPLEMENTED:
 1. ✅ **Document Chunking Strategy** - Intelligent semantic chunking with content type detection
@@ -85,7 +88,8 @@ User has requested comprehensive real-time web search integration with database 
   - `VectorStoreManager`: Manages ChromaDB vector storage and similarity search
   - `WikipediaIngestionService`: Specialized service for Wikipedia article ingestion with rate limiting
   - `TavilyIntegrationService`: Real-time web search integration with content cleaning and processing
-  - `WebRAGProcessor`: Hybrid processor combining local knowledge base with web search results
+  - `HybridRAGProcessor`: Intelligent processor that compares KB data with web data and updates knowledge base
+  - `WebRAGProcessor`: Legacy processor for web search integration
   - `WebCacheDatabase`: PostgreSQL-based caching system for web search results and content
   - `WebCacheUI`: Dashboard for monitoring and managing web search cache
   - `RAGSystemAPI`: Main API layer that coordinates all services

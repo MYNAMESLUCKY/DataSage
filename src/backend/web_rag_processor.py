@@ -33,20 +33,40 @@ class WebRAGProcessor:
         **kwargs
     ) -> Dict[str, Any]:
         """
-        Process query with intelligent web search and database caching
+        Intelligent hybrid RAG system:
+        1. Check existing knowledge base first
+        2. Fetch web data for comparison and updates
+        3. Compare sources and identify gaps
+        4. Update knowledge base with new information
+        5. Generate comprehensive answer from all sources
         """
         start_time = time.time()
         
         try:
-            logger.info(f"Processing query with intelligent web integration: {query[:100]}...")
+            logger.info(f"Starting intelligent hybrid RAG processing: {query[:100]}...")
             
             web_sources = []
-            relevant_docs = []
+            kb_docs = []
+            web_docs = []
             web_content_added = False
             cache_hit = False
+            knowledge_gaps_found = False
             
-            # Step 1: Check cache first for web results
+            # Step 1: First check existing knowledge base
+            logger.info("Step 1: Checking existing knowledge base...")
+            kb_docs = self.enhanced_retrieval.retrieve_documents(
+                query, 
+                self.vector_store,
+                max_docs=10,
+                similarity_threshold=0.1
+            )
+            
+            kb_has_content = len(kb_docs) > 0
+            logger.info(f"Found {len(kb_docs)} relevant documents in knowledge base")
+            
+            # Step 2: Check cache first for web results
             if use_web_search and self.web_cache.is_connected:
+                logger.info("Step 2: Checking web cache...")
                 cached_results = self.web_cache.get_cached_results(query, max_age_hours=24)
                 if cached_results:
                     logger.info(f"Using cached web results for query: {query[:50]}...")

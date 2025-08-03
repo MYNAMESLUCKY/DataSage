@@ -445,11 +445,11 @@ class RAGSystemApp:
     def process_query(self, query: str):
         """Process query and display results with optional web search"""
         try:
-            # Import web processor
-            from src.backend.web_rag_processor import WebRAGProcessor
+            # Import hybrid processor for intelligent RAG
+            from src.backend.hybrid_rag_processor import HybridRAGProcessor
             
-            # Initialize web processor
-            web_processor = WebRAGProcessor(
+            # Initialize intelligent hybrid processor
+            hybrid_processor = HybridRAGProcessor(
                 self.api.vector_store,
                 self.api.rag_engine,
                 self.api.enhanced_retrieval
@@ -457,25 +457,29 @@ class RAGSystemApp:
             
             use_web_search = st.session_state.get('use_web_search', True)
             
-            with st.spinner("🔍 Processing your query..." + (" (with web search)" if use_web_search else "")):
-                # Debug info
-                if use_web_search:
-                    st.info(f"Web search enabled. Tavily available: {web_processor.tavily_service.is_available()}")
-                
-                # Always try web search first if enabled
+            with st.spinner("🧠 Processing with intelligent hybrid RAG..." + (" (comparing KB + web data)" if use_web_search else " (KB only)")):
+                # Use intelligent hybrid processing
                 if use_web_search:
                     try:
-                        result = web_processor.process_query_with_web(
+                        result = hybrid_processor.process_intelligent_query(
                             query=query,
                             llm_model=st.session_state.get('selected_llm', 'sarvam-m'),
                             use_web_search=True,
-                            max_web_results=st.session_state.get('max_web_results', 5),
-                            prioritize_web=st.session_state.get('prioritize_web', True)
+                            max_web_results=st.session_state.get('max_web_results', 5)
                         )
-                        st.success("Used web-enhanced processing!")
+                        
+                        # Show processing strategy used
+                        strategy = result.get('strategy_used', 'unknown')
+                        if strategy == 'hybrid_comparison':
+                            st.success("✅ Compared knowledge base with web data - providing best answer")
+                        elif strategy == 'web_data_with_kb_update':
+                            st.success("✅ Knowledge base updated with new web information")
+                        elif strategy == 'kb_only':
+                            st.info("ℹ️ Used knowledge base only (web search unavailable)")
+                        
                     except Exception as e:
-                        st.error(f"Web search failed: {str(e)}")
-                        st.warning("Falling back to knowledge base only")
+                        st.error(f"Hybrid processing failed: {str(e)}")
+                        st.warning("Falling back to basic processing")
                         result = self.api.query(
                             query=query, 
                             llm_model=st.session_state.get('selected_llm', 'sarvam-m')
