@@ -177,9 +177,9 @@ class RAGEngine:
                 # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
                 # do not change this unless explicitly requested by the user
                 
-                prompt = f"""You are an expert knowledge assistant providing comprehensive, accurate answers.
+                prompt = f"""You are an expert knowledge assistant providing comprehensive, detailed, and specific answers with concrete examples and actionable information.
 
-CRITICAL INSTRUCTION: Provide your answer in clean, readable format WITHOUT embedding source citations mid-sentence. Sources will be listed separately.
+CRITICAL INSTRUCTION: Provide detailed, specific answers with examples, numbers, names, and concrete details. Avoid generic statements. Sources will be listed separately.
 
 Context Information:
 {context}
@@ -187,27 +187,36 @@ Context Information:
 Question: {query}
 
 Response Guidelines:
-1. Give a complete, well-structured answer based on the provided context
-2. Start with the most direct answer to the question
-3. Provide supporting details and explanations as needed
-4. Do NOT include source references, citations, or [Source X] markers within your answer text
-5. Write in clear, natural language as if explaining to someone who wants to understand the topic
-6. If the context lacks information for a complete answer, acknowledge this at the end
-7. Structure your response logically with proper paragraphs
+1. **BE SPECIFIC**: Include specific names, programs, schemes, amounts, dates, and concrete details from the context
+2. **PROVIDE EXAMPLES**: Give real examples, case studies, or specific instances mentioned in the documents
+3. **USE NUMBERS**: Include exact figures, percentages, amounts, or quantities when available
+4. **STRUCTURE CLEARLY**: Use clear sections, bullet points, or numbered lists when appropriate
+5. **START WITH KEY POINTS**: Lead with the most important and specific information
+6. **AVOID GENERIC LANGUAGE**: Replace vague terms like "various schemes" with specific scheme names
+7. **INCLUDE PRACTICAL DETAILS**: Add implementation details, eligibility criteria, or application processes if available
+8. **NO SOURCE CITATIONS**: Do NOT include [Source X] or citation markers within your answer text
+
+Example of GOOD specific answer style:
+- "The Pradhan Mantri Fasal Bima Yojana provides crop insurance with premium rates of 2% for Kharif crops and 1.5% for Rabi crops"
+- "Under the PM-KISAN scheme, farmers receive ₹6,000 annually in three installments of ₹2,000 each"
+
+Example of BAD generic answer style:
+- "The government offers various schemes to support farmers"
+- "Multiple programs provide financial assistance"
 
 Please provide your answer in JSON format:
-{{"answer": "your clean, comprehensive answer without any source citations embedded", "confidence": confidence_score_between_0_and_1}}
+{{"answer": "your detailed, specific answer with concrete examples and exact details", "confidence": confidence_score_between_0_and_1}}
 """
 
                 # Adjust parameters based on model type
                 request_params = {
                     "model": model,
                     "messages": [
-                        {"role": "system", "content": "You are a helpful AI assistant specialized in analyzing documents and providing accurate answers."},
+                        {"role": "system", "content": "You are an expert research analyst who provides detailed, specific answers with concrete examples, exact figures, and actionable information. Always prioritize specificity over generality."},
                         {"role": "user", "content": prompt}
                     ],
-                    "temperature": 0.3,
-                    "max_tokens": 1000
+                    "temperature": 0.2,
+                    "max_tokens": 1500
                 }
                 
                 # Only add response_format for models that support it (exclude certain models)
