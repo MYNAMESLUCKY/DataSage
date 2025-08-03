@@ -10,121 +10,120 @@ def apply_modern_styling():
     
     st.markdown("""
     <style>
-    /* Global Styles */
+    /* Global Styles - Clean and Simple */
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #ffffff;
         min-height: 100vh;
     }
     
-    /* Main container with glassmorphism effect */
+    /* Main container - minimal design */
     .main-container {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 2rem;
+        background: #ffffff;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        padding: 1.5rem;
         margin: 1rem;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
-    /* Header styling */
+    /* Header styling - simple and clean */
     .header-container {
-        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%);
+        background: #f8f9fa;
         padding: 2rem;
-        border-radius: 15px;
+        border-radius: 8px;
         margin-bottom: 2rem;
         text-align: center;
-        box-shadow: 0 4px 15px 0 rgba(31, 38, 135, 0.2);
+        border: 1px solid #e9ecef;
     }
     
     .header-title {
-        font-size: 3rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: #2c3e50;
         margin-bottom: 0.5rem;
     }
     
     .header-subtitle {
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         color: #6c757d;
-        font-weight: 300;
+        font-weight: 400;
     }
     
-    /* Tab styling */
+    /* Tab styling - clean and minimal */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 15px;
-        padding: 0.5rem;
-        backdrop-filter: blur(10px);
+        gap: 4px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        padding: 0.25rem;
+        border: 1px solid #dee2e6;
     }
     
     .stTabs [data-baseweb="tab"] {
-        height: 60px;
-        padding: 0px 24px;
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: white;
-        font-weight: 600;
-        transition: all 0.3s ease;
+        height: 48px;
+        padding: 0px 20px;
+        background: transparent;
+        border-radius: 4px;
+        border: none;
+        color: #495057;
+        font-weight: 500;
+        transition: all 0.2s ease;
     }
     
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        box-shadow: 0 4px 15px 0 rgba(102, 126, 234, 0.4);
-        transform: translateY(-2px);
+        background: #ffffff;
+        color: #2c3e50;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        border: 1px solid #dee2e6;
     }
     
-    /* Metric cards */
+    /* Metric cards - clean design */
     .metric-card {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border-radius: 15px;
+        background: #ffffff;
+        border-radius: 8px;
         padding: 1.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid #e9ecef;
         text-align: center;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     .metric-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px 0 rgba(31, 38, 135, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-color: #007bff;
     }
     
     .metric-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: white;
+        font-size: 2.2rem;
+        font-weight: 600;
+        color: #2c3e50;
         margin-bottom: 0.5rem;
     }
     
     .metric-label {
-        font-size: 1rem;
-        color: rgba(255, 255, 255, 0.8);
+        font-size: 0.95rem;
+        color: #6c757d;
         font-weight: 500;
     }
     
-    /* Button styling */
+    /* Button styling - simple and clean */
     .stButton > button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: #007bff;
         color: white;
         border: none;
-        border-radius: 12px;
-        padding: 0.75rem 2rem;
-        font-weight: 600;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 15px 0 rgba(102, 126, 234, 0.3);
+        border-radius: 6px;
+        padding: 0.6rem 1.5rem;
+        font-weight: 500;
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0, 123, 255, 0.2);
     }
     
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px 0 rgba(102, 126, 234, 0.4);
+        background: #0056b3;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.3);
     }
     
     /* Input styling */
@@ -189,14 +188,14 @@ def apply_modern_styling():
         color: #333;
     }
     
-    /* Chart containers */
+    /* Chart containers - minimal styling */
     .chart-container {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(10px);
-        border-radius: 15px;
+        background: #ffffff;
+        border-radius: 8px;
         padding: 1.5rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
+        border: 1px solid #e9ecef;
         margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
     
     /* Agent status cards */
@@ -301,9 +300,9 @@ def apply_modern_styling():
         to { transform: rotate(360deg); }
     }
     
-    /* Dark mode text */
+    /* Clean text styling */
     .stMarkdown, .stText, p, h1, h2, h3, h4, h5, h6 {
-        color: white !important;
+        color: #2c3e50 !important;
     }
     
     /* Make plotly charts blend better */
@@ -319,14 +318,14 @@ def apply_modern_styling():
     """, unsafe_allow_html=True)
 
 def create_metric_card(title: str, value: str, delta: str = None, delta_color: str = "normal"):
-    """Create a modern metric card"""
+    """Create a clean metric card"""
     delta_html = ""
     if delta:
-        color = "#4facfe" if delta_color == "normal" else "#ff6b6b" if delta_color == "inverse" else "#4facfe"
-        delta_html = f'<div style="color: {color}; font-size: 0.9rem; margin-top: 0.5rem;">{delta}</div>'
+        color = "#28a745" if delta_color == "normal" else "#dc3545" if delta_color == "inverse" else "#28a745"
+        delta_html = f'<div style="color: {color}; font-size: 0.85rem; margin-top: 0.5rem; font-weight: 500;">{delta}</div>'
     
     return f"""
-    <div class="metric-card fade-in">
+    <div class="metric-card">
         <div class="metric-value">{value}</div>
         <div class="metric-label">{title}</div>
         {delta_html}
