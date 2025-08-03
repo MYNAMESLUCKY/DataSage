@@ -179,16 +179,19 @@ class ChromaVectorStoreManager:
         try:
             logger.info(f"Performing similarity search for query: {query}...")
             
+            # Expand search to get more candidates for intelligent filtering
+            search_k = min(k * 3, 20)
+            
             # Perform similarity search
             results = self.collection.query(
                 query_texts=[query],
-                n_results=k,
+                n_results=search_k,
                 where=filter_metadata,
                 include=['documents', 'metadatas', 'distances']
             )
             
             # Convert results to Document objects
-            documents = []
+            candidates = []
             
             if results['documents'] and results['documents'][0]:
                 for i, (doc_text, metadata, distance) in enumerate(zip(
@@ -212,10 +215,14 @@ class ChromaVectorStoreManager:
                             page_content=doc_text,
                             metadata=metadata
                         )
-                        documents.append(document)
+                        candidates.append(document)
             
-            logger.info(f"Found {len(documents)} relevant documents above threshold {threshold}")
-            return documents
+            # Apply intelligent ranking for better relevance
+            ranked_docs = self._rank_by_relevance(query, candidates)
+            final_docs = ranked_docs[:k]
+            
+            logger.info(f"Found {len(final_docs)} relevant documents above threshold {threshold}")
+            return final_docs
             
         except Exception as e:
             logger.error(f"Similarity search failed: {str(e)}")
@@ -256,6 +263,57 @@ class ChromaVectorStoreManager:
         except Exception as e:
             logger.error(f"Failed to delete documents: {str(e)}")
             return False
+    
+    def _rank_by_relevance(self, query: str, documents: List[Document]) -> List[Document]:
+        """Rank documents by relevance using content analysis"""
+        if not documents:
+            return []
+        
+        query_lower = query.lower()
+        query_terms = set(query_lower.split())
+        
+        # Remove stop words for better matching
+        stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'what', 'how', 'why', 'when', 'where'}
+        meaningful_terms = query_terms - stop_words
+        
+        scored_docs = []
+        
+        for doc in documents:
+            base_score = doc.metadata.get('similarity_score', 0.0)
+            content_lower = doc.page_content.lower()
+            title = doc.metadata.get('title', '').lower()
+            source = doc.metadata.get('source', '').lower()
+            
+            # Boost for title relevance (most important for basic questions)
+            title_matches = sum(1 for term in meaningful_terms if term in title)
+            if title_matches > 0:
+                base_score += title_matches * 0.3
+            
+            # Check if this is a main Wikipedia article vs subtopic
+            if 'wikipedia.org/wiki/' in source:
+                page_name = source.split('/')[-1].lower().replace('_', ' ')
+                direct_matches = sum(1 for term in meaningful_terms if term in page_name)
+                
+                # Boost main topic articles
+                if direct_matches >= len(meaningful_terms) * 0.7:
+                    base_score += 0.25
+            
+            # Boost for exact query phrase in content
+            if query_lower in content_lower:
+                base_score += 0.2
+            
+            # Penalize overly specialized content for basic questions
+            basic_patterns = ['what is', 'define', 'explain']
+            if any(pattern in query_lower for pattern in basic_patterns):
+                technical_terms = ['algorithm', 'implementation', 'methodology', 'advanced', 'technical analysis']
+                if sum(1 for term in technical_terms if term in content_lower) > 2:
+                    base_score -= 0.15
+            
+            scored_docs.append((base_score, doc))
+        
+        # Sort by score (descending)
+        scored_docs.sort(key=lambda x: x[0], reverse=True)
+        return [doc for score, doc in scored_docs]
     
     def update_document(self, doc_id: str, document: Document) -> bool:
         """Update a specific document"""
