@@ -119,6 +119,27 @@ setInterval(function() {
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
+    
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+        .main-header h1 {
+            font-size: 1.5rem !important;
+        }
+        .main-header p {
+            font-size: 0.9rem !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 40px !important;
+            font-size: 0.9rem !important;
+        }
+        .stButton > button {
+            width: 100% !important;
+            margin: 0.2rem 0 !important;
+        }
+        .stTextInput > div > div > input {
+            font-size: 16px !important; /* Prevents zoom on iOS */
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 

@@ -11,34 +11,50 @@ import os
 
 def show_login_page():
     """Display login page with Google Firebase integration"""
-    st.markdown('<div class="main-header"><h1>🏢 Enterprise RAG System</h1><p>Secure Authentication Portal</p></div>', 
-                unsafe_allow_html=True)
+    # Mobile-optimized header
+    st.markdown("""
+    <div class="main-header">
+        <h1>🏢 Enterprise RAG System</h1>
+        <p>Secure Authentication Portal</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Check if already authenticated
     if st.session_state.get('authenticated', False):
         st.success("✅ Already authenticated!")
         return True
     
-    # Initialize auth system
-    init_auth_session()
-    auth_system = st.session_state.auth_system
-    
-    # Check if Firebase is available
-    firebase_available = check_firebase_availability()
-    
-    if firebase_available:
-        # Show tabbed interface with Google login
-        tab1, tab2 = st.tabs(["🌐 Google Login", "🔑 Standard Login"])
+    try:
+        # Initialize auth system
+        init_auth_session()
+        auth_system = st.session_state.auth_system
         
-        with tab1:
-            from src.components.google_auth import show_google_login_button
-            return show_google_login_button()
+        # Check if Firebase is available
+        firebase_available = check_firebase_availability()
         
-        with tab2:
+        if firebase_available:
+            # Show tabbed interface with Google login
+            tab1, tab2 = st.tabs(["🌐 Google Login", "🔑 Standard Login"])
+            
+            with tab1:
+                try:
+                    from src.components.google_auth import show_google_login_button
+                    return show_google_login_button()
+                except Exception as e:
+                    st.error(f"Google login unavailable: {str(e)}")
+                    return show_standard_login_form()
+            
+            with tab2:
+                return show_standard_login_form()
+        else:
+            # Show only standard login
+            st.info("💡 Standard authentication available. Configure Firebase for Google login.")
             return show_standard_login_form()
-    else:
-        # Show only standard login
-        return show_standard_login_form()
+            
+    except Exception as e:
+        st.error(f"Authentication system error: {str(e)}")
+        st.info("Please refresh the page or contact support.")
+        return False
 
 def check_firebase_availability():
     """Check if Firebase credentials are available"""
@@ -214,21 +230,32 @@ def show_standard_login_form():
     """Show standard username/password login form"""
     st.info("🔑 Use your registered username and password")
     
-    # Get auth system from session state
-    auth_system = st.session_state.auth_system
-    
-    # Login form
-    with st.form("login_form"):
-        st.subheader("Sign In")
+    try:
+        # Get auth system from session state
+        auth_system = st.session_state.auth_system
         
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            login_clicked = st.form_submit_button("🚀 Login", use_container_width=True)
-        with col2:
-            register_clicked = st.form_submit_button("📝 Register", use_container_width=True)
+        # Mobile-optimized login form
+        with st.form("login_form"):
+            st.subheader("Sign In")
+            
+            username = st.text_input(
+                "Username", 
+                placeholder="Enter your username",
+                help="Your unique username"
+            )
+            password = st.text_input(
+                "Password", 
+                type="password", 
+                placeholder="Enter your password",
+                help="Your secure password"
+            )
+            
+            # Mobile-friendly buttons
+            col1, col2 = st.columns(2)
+            with col1:
+                login_clicked = st.form_submit_button("🚀 Login", use_container_width=True)
+            with col2:
+                register_clicked = st.form_submit_button("📝 Register", use_container_width=True)
         
         if login_clicked and username and password:
             with st.spinner("Authenticating..."):
@@ -252,6 +279,10 @@ def show_standard_login_form():
         if register_clicked:
             st.session_state.show_register = True
             st.rerun()
+    
+    except Exception as e:
+        st.error(f"Login form error: {str(e)}")
+        return False
     
     # Show registration form if requested
     if st.session_state.get('show_register', False):
