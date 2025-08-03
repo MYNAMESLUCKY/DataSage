@@ -150,6 +150,14 @@ def main():
     from src.auth.auth_system import init_auth_session, check_authentication
     init_auth_session()
     
+    # Add logout functionality for testing
+    if st.query_params.get("logout") == "true":
+        for key in ['authenticated', 'user_token', 'user_info', 'user_id', 'username', 'role']:
+            if key in st.session_state:
+                del st.session_state[key]
+        st.session_state.authenticated = False
+        st.rerun()
+    
     # Check if user is authenticated
     if not check_authentication():
         # Show login page if not authenticated
