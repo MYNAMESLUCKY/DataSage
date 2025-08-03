@@ -12,7 +12,7 @@ from chromadb.utils import embedding_functions
 # LangChain
 from langchain.schema import Document
 
-from backend.utils import setup_logging, performance_monitor
+from ..utils.utils import setup_logging, performance_monitor
 
 logger = setup_logging(__name__)
 

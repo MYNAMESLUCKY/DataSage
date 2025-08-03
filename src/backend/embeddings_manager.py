@@ -22,7 +22,7 @@ try:
 except ImportError:
     SKLEARN_AVAILABLE = False
 
-from .utils import setup_logging
+from ..utils.utils import setup_logging
 
 logger = setup_logging(__name__)
 

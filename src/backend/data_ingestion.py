@@ -22,7 +22,7 @@ import PyPDF2
 import docx
 import xlrd
 
-from .utils import setup_logging, validate_url, clean_text
+from ..utils.utils import setup_logging, validate_url, clean_text
 from .models import DataSource
 
 logger = setup_logging(__name__)
