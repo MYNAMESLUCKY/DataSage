@@ -38,7 +38,8 @@ class FirebaseAuthManager:
                     return False
                 
                 # Replace escaped newlines in private key
-                private_key = private_key.replace('\\n', '\n')
+                if private_key:
+                    private_key = private_key.replace('\\n', '\n')
                 
                 # Create credentials dict
                 cred_dict = {
@@ -92,7 +93,7 @@ class FirebaseAuthManager:
             logger.error(f"Failed to verify Firebase token: {e}")
             return None
     
-    def create_jwt_from_firebase(self, firebase_user: Dict, role: str = 'user') -> str:
+    def create_jwt_from_firebase(self, firebase_user: Dict, role: str = 'user') -> Optional[str]:
         """Create JWT token from Firebase user info"""
         try:
             payload = {
@@ -115,7 +116,7 @@ class FirebaseAuthManager:
             logger.error(f"Failed to create JWT from Firebase user: {e}")
             return None
     
-    def get_google_oauth_config(self) -> Dict:
+    def get_google_oauth_config(self) -> Optional[Dict]:
         """Get Google OAuth configuration for Streamlit OAuth"""
         client_id = os.getenv("GOOGLE_CLIENT_ID")
         client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
