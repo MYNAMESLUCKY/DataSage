@@ -210,15 +210,18 @@ class RAGSystemAPI:
                     logger.info(f"Returned cached result for query: {query[:50]}...")
                     return cached_result
             
-            # Use enhanced retrieval for better document selection
+            # Use enhanced retrieval with optimized threshold
+            # Override threshold to be more permissive for better retrieval
+            optimized_threshold = min(similarity_threshold, 0.15)  # Cap at 0.15 for better results
+            
             relevant_docs = self.enhanced_retrieval.enhanced_similarity_search(
                 vector_store=self.vector_store,
                 query=query,
                 k=max_results,
-                threshold=similarity_threshold
+                threshold=optimized_threshold
             )
             
-            if not relevant_docs or len(relevant_docs) < 2:
+            if not relevant_docs:
                 # Try fallback search
                 logger.info("Insufficient relevant documents found, trying fallback search...")
                 fallback_results = self.search_fallback.search_fallback(query, min_results=1)

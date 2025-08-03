@@ -266,12 +266,20 @@ class EnhancedRetrieval:
         
         # Remove duplicates and filter
         unique_docs = self._remove_duplicates(semantic_docs)
-        filtered_docs = self.filter.filter_documents(unique_docs)
+        
+        # Skip aggressive filtering if we don't have many docs
+        if len(unique_docs) > 5:
+            filtered_docs = self.filter.filter_documents(unique_docs)
+        else:
+            filtered_docs = unique_docs
         
         # Rerank results
         reranked_docs = self._rerank_documents(query, filtered_docs)
         
-        return reranked_docs[:k]
+        # Ensure we return something if we found documents
+        final_docs = reranked_docs[:k] if reranked_docs else semantic_docs[:k]
+        
+        return final_docs
     
     def _expand_query(self, query: str) -> str:
         """Expand query with synonyms and related terms"""
