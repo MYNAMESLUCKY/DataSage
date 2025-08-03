@@ -214,6 +214,9 @@ def show_standard_login_form():
     """Show standard username/password login form"""
     st.info("🔑 Use your registered username and password")
     
+    # Get auth system from session state
+    auth_system = st.session_state.auth_system
+    
     # Login form
     with st.form("login_form"):
         st.subheader("Sign In")
@@ -275,6 +278,7 @@ def show_registration_form():
     st.markdown("---")
     st.subheader("📝 Create New Account")
     
+    # Get auth system from session state
     auth_system = st.session_state.auth_system
     
     with st.form("register_form"):
