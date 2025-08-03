@@ -1445,12 +1445,20 @@ The comprehensive analysis reveals several key dimensions:
         and usage insights powered by advanced data visualization and machine learning analytics.
         """)
         
+        # Import required modules
+        import pandas as pd
+        import random
+        import time
+        from datetime import datetime, timedelta
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        
         # Import analytics dashboard
         try:
             from ..backend.analytics_dashboard import analytics_dashboard
         except ImportError:
-            st.error("Analytics dashboard module not available")
-            return
+            st.warning("Analytics dashboard module not available - using demo mode")
+            pass
         
         # Analytics control panel
         st.subheader("📈 Analytics Control Panel")
@@ -1488,10 +1496,6 @@ The comprehensive analysis reveals several key dimensions:
         st.subheader("🎯 Key Performance Indicators")
         
         if refresh_analytics or st.session_state.get('analytics_auto_refresh', True):
-            # Generate sample analytics data
-            import random
-            import time
-            from datetime import datetime, timedelta
             
             # Simulate system metrics
             total_queries = random.randint(150, 500)
@@ -1568,8 +1572,6 @@ The comprehensive analysis reveals several key dimensions:
             df = pd.DataFrame(performance_data)
             
             # Processing time chart
-            import plotly.graph_objects as go
-            from plotly.subplots import make_subplots
             
             fig = make_subplots(
                 rows=2, cols=1,
@@ -1855,6 +1857,6 @@ The comprehensive analysis reveals several key dimensions:
             for update in reversed(st.session_state.analytics_updates[-5:]):
                 st.markdown(f"**{update['timestamp']}** - {update['event']} - {update['details']}")
             
-            # Auto-refresh every 5 seconds
-            time.sleep(1)
-            st.rerun()
+            # Auto-refresh simulation
+            if st.button("🔄 Update Stream"):
+                st.rerun()
