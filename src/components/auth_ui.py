@@ -33,19 +33,13 @@ def show_login_page():
         firebase_available = check_firebase_availability()
         
         if firebase_available:
-            # Show tabbed interface with Google login
-            tab1, tab2 = st.tabs(["🌐 Google Login", "🔑 Standard Login"])
+            # Show Firebase Google login only
+            show_firebase_google_login()
             
-            with tab1:
-                try:
-                    from src.components.google_auth import show_google_login_button
-                    show_google_login_button()
-                except Exception as e:
-                    st.error(f"Google login unavailable: {str(e)}")
-                    st.info("Please use Standard Login tab below.")
-            
-            with tab2:
-                show_standard_login_form()
+            # Also show standard login as fallback
+            st.markdown("---")
+            st.info("Alternative: Use standard username/password login below")
+            show_standard_login_form()
         else:
             # Show only standard login
             st.info("💡 Standard authentication available. Configure Firebase for Google login.")
@@ -68,62 +62,73 @@ def check_firebase_availability():
     ]
     return all(os.getenv(var) for var in required_vars)
 
-def show_google_firebase_login():
-    """Display Google Firebase login option"""
-    st.info("🔐 Sign in with your Google account for secure access")
+def show_firebase_google_login():
+    """Display Firebase Google login option"""
+    st.markdown("### 🌐 Firebase Google Authentication")
+    st.info("Sign in with your Google account for secure access")
     
     # Firebase Web SDK integration
     firebase_config = get_firebase_web_config()
     
     if firebase_config:
-        # Embed Firebase Web SDK
+        # Embed Firebase Web SDK with authentication handling
         st.markdown(f"""
-        <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
-        <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js"></script>
+        <script type="module">
+        import {{ initializeApp }} from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js';
+        import {{ getAuth, signInWithPopup, GoogleAuthProvider, getIdToken }} from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js';
         
-        <script>
         // Firebase configuration
         const firebaseConfig = {firebase_config};
         
         // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
         
         // Google Sign-In
-        function signInWithGoogle() {{
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider)
-                .then((result) => {{
-                    // Get the ID token
-                    result.user.getIdToken().then((idToken) => {{
-                        // Send token to Streamlit
-                        window.parent.postMessage({{
-                            type: 'firebase-auth-success',
-                            idToken: idToken,
-                            user: {{
-                                uid: result.user.uid,
-                                email: result.user.email,
-                                displayName: result.user.displayName,
-                                photoURL: result.user.photoURL
-                            }}
-                        }}, '*');
-                    }});
-                }})
-                .catch((error) => {{
-                    window.parent.postMessage({{
-                        type: 'firebase-auth-error',
-                        error: error.message
-                    }}, '*');
-                }});
+        window.signInWithGoogle = async function() {{
+            const provider = new GoogleAuthProvider();
+            try {{
+                const result = await signInWithPopup(auth, provider);
+                const idToken = await getIdToken(result.user);
+                
+                // Send authentication data to Streamlit
+                window.parent.postMessage({{
+                    type: 'firebase-auth-success',
+                    idToken: idToken,
+                    user: {{
+                        uid: result.user.uid,
+                        email: result.user.email,
+                        displayName: result.user.displayName,
+                        photoURL: result.user.photoURL
+                    }}
+                }}, '*');
+                
+                // Reload page to update authentication state
+                setTimeout(() => {{ window.location.reload(); }}, 1000);
+                
+            }} catch (error) {{
+                console.error('Firebase authentication error:', error);
+                window.parent.postMessage({{
+                    type: 'firebase-auth-error',
+                    error: error.message
+                }}, '*');
+            }}
         }}
         </script>
         
-        <div style="text-align: center; padding: 20px;">
+        <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;">
             <button onclick="signInWithGoogle()" 
                     style="background-color: #4285f4; color: white; border: none; 
-                           padding: 12px 24px; border-radius: 4px; font-size: 16px; 
-                           cursor: pointer;">
-                🚀 Sign in with Google
+                           padding: 15px 30px; border-radius: 8px; font-size: 16px; 
+                           cursor: pointer; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                           display: flex; align-items: center; margin: 0 auto;">
+                <svg width="20" height="20" viewBox="0 0 24 24" style="margin-right: 8px;">
+                    <path fill="white" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                    <path fill="white" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                    <path fill="white" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                    <path fill="white" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Sign in with Google
             </button>
         </div>
         """, unsafe_allow_html=True)
@@ -131,16 +136,22 @@ def show_google_firebase_login():
         # Handle authentication result
         handle_firebase_auth_result()
     else:
-        st.error("Google Authentication not configured")
+        st.error("Firebase Google Authentication not configured")
+        st.info("Please configure Firebase credentials to enable Google login")
 
 def get_firebase_web_config():
     """Get Firebase web configuration"""
     project_id = os.getenv("FIREBASE_PROJECT_ID")
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    
     if not project_id:
         return None
     
+    # Extract API key from client ID (common pattern)
+    api_key = client_id.split('-')[0] if client_id else "auto-generated-key"
+    
     return f"""{{
-        apiKey: "web-api-key",
+        apiKey: "{api_key}",
         authDomain: "{project_id}.firebaseapp.com",
         projectId: "{project_id}",
         storageBucket: "{project_id}.appspot.com",
@@ -149,83 +160,122 @@ def get_firebase_web_config():
     }}"""
 
 def handle_firebase_auth_result():
-    """Handle Firebase authentication result from JavaScript"""
-    # This would need to be handled via Streamlit components
-    # For now, show manual token input as fallback
+    """Handle Firebase authentication result"""
+    # Listen for authentication messages from JavaScript
+    st.markdown("""
+    <script>
+    window.addEventListener('message', function(event) {
+        if (event.data.type === 'firebase-auth-success') {
+            // Show success message
+            console.log('Firebase auth success:', event.data);
+            
+            // Store token for processing
+            sessionStorage.setItem('firebase_token', event.data.idToken);
+            sessionStorage.setItem('firebase_user', JSON.stringify(event.data.user));
+            
+            // Trigger page reload to process authentication
+            window.location.reload();
+        } else if (event.data.type === 'firebase-auth-error') {
+            console.error('Firebase auth error:', event.data.error);
+            alert('Authentication failed: ' + event.data.error);
+        }
+    });
     
-    st.markdown("---")
-    st.write("**Alternative: Manual Token Input**")
+    // Check for stored authentication result on page load
+    const storedToken = sessionStorage.getItem('firebase_token');
+    const storedUser = sessionStorage.getItem('firebase_user');
     
-    with st.form("firebase_token_form"):
-        id_token = st.text_area("Firebase ID Token", 
-                                placeholder="Paste your Firebase ID token here",
-                                help="Get this from your browser's developer console after Google sign-in")
+    if (storedToken && storedUser) {
+        // Clear from session storage
+        sessionStorage.removeItem('firebase_token');
+        sessionStorage.removeItem('firebase_user');
         
-        if st.form_submit_button("🔓 Authenticate with Token"):
-            if id_token:
-                process_firebase_token(id_token)
+        // Process authentication by setting URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        if (!urlParams.has('firebase_token')) {
+            urlParams.set('firebase_token', storedToken);
+            window.location.search = urlParams.toString();
+        }
+    }
+    </script>
+    """, unsafe_allow_html=True)
+    
+    # Process authentication if Firebase token is in URL parameters
+    query_params = st.query_params
+    if "firebase_token" in query_params:
+        id_token = query_params["firebase_token"]
+        
+        with st.spinner("Processing Google authentication..."):
+            process_firebase_token(id_token)
+            
+            # Clear query parameters
+            st.query_params.clear()
+            st.rerun()
 
 def process_firebase_token(id_token: str):
     """Process Firebase ID token for authentication"""
+    import time
+    
     try:
-        # Initialize Firebase Auth Manager
-        if 'firebase_auth' not in st.session_state:
-            from src.auth.firebase_auth import FirebaseAuthManager
-            st.session_state.firebase_auth = FirebaseAuthManager()
+        from src.auth.firebase_auth import FirebaseAuthManager
+        from src.auth.auth_system import UserRole
         
-        firebase_auth = st.session_state.firebase_auth
+        # Initialize Firebase Auth Manager
+        firebase_auth = FirebaseAuthManager()
         
         # Verify Firebase token
-        user_info = firebase_auth.verify_firebase_token(id_token)
+        verified_user = firebase_auth.verify_firebase_token(id_token)
         
-        if user_info:
+        if verified_user:
+            # Get auth system from session state
+            auth_system = st.session_state.auth_system
+            
             # Determine user role
-            role = determine_user_role(user_info['email'])
+            if not auth_system._has_any_users():
+                role = UserRole.ADMIN  # First user becomes admin
+            else:
+                existing_user = auth_system._get_user_by_email(verified_user['email'])
+                if existing_user:
+                    role = UserRole(existing_user.get('role', 'user'))
+                else:
+                    role = UserRole.USER  # New users get user role
             
-            # Create JWT token
-            jwt_token = firebase_auth.create_jwt_from_firebase(user_info, role)
+            # Create local user account if doesn't exist
+            username = verified_user['email'].split('@')[0]  # Use email prefix as username
             
-            if jwt_token:
+            # Try to register or get existing user
+            user_result = auth_system.register_user(
+                username=username,
+                email=verified_user['email'],
+                password="firebase_user",  # Placeholder password for Firebase users
+                role=role
+            )
+            
+            if user_result['success'] or "already exists" in user_result.get('message', ''):
                 # Set session state
                 st.session_state.authenticated = True
-                st.session_state.user_token = jwt_token
+                st.session_state.user_token = id_token
                 st.session_state.user_info = {
-                    'username': user_info['email'],
-                    'email': user_info['email'],
-                    'name': user_info.get('name', ''),
-                    'role': role,
-                    'provider': 'google',
-                    'picture': user_info.get('picture')
+                    'username': username,
+                    'email': verified_user['email'],
+                    'role': role.value,
+                    'provider': 'firebase'
                 }
                 
-                # Sync with local auth
-                firebase_auth.sync_with_local_auth(user_info, role)
-                
-                st.success(f"✅ Successfully authenticated as {user_info['name']} ({role})")
+                st.success(f"✅ Successfully authenticated as {verified_user.get('name', verified_user['email'])} ({role.value})")
                 time.sleep(1)
                 st.rerun()
             else:
-                st.error("Failed to create session token")
+                st.error(f"❌ Failed to create user account: {user_result.get('message', 'Unknown error')}")
         else:
-            st.error("Invalid Firebase token")
+            st.error("❌ Invalid Firebase token")
             
     except Exception as e:
-        st.error(f"Authentication failed: {str(e)}")
+        st.error(f"❌ Authentication failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
-def determine_user_role(email: str) -> str:
-    """Determine user role for new Firebase user"""
-    auth_system = st.session_state.auth_system
-    
-    # Check if this is the first user
-    if not auth_system._has_any_users():
-        return 'admin'
-    
-    # Check if user exists locally
-    existing_user = auth_system._get_user_by_email(email)
-    if existing_user:
-        return existing_user.get('role', 'user')
-    
-    return 'user'
+
 
 def show_standard_login_form():
     """Show standard username/password login form"""
