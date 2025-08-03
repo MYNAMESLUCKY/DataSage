@@ -165,13 +165,25 @@ def rate_limited_api_call(
             time.sleep(wait_time)
         
         try:
-            # Make the API call
+            # Make the API call with enhanced debugging
+            logger.debug(f"Calling API function: {api_function}")
             result = api_function(*args, **kwargs)
+            logger.debug(f"API function returned: {type(result)} - {result}")
+            
+            if result is None:
+                logger.error("API function returned None - this may cause NoneType errors")
+                raise Exception("API function returned None result")
+            
             rate_limiter.record_success(query)
             return result
             
         except Exception as e:
+            import traceback
             error_str = str(e)
+            error_traceback = traceback.format_exc()
+            
+            logger.error(f"API call failed: {error_str}")
+            logger.error(f"Error traceback: {error_traceback}")
             
             if "429" in error_str or "rate limit" in error_str.lower():
                 rate_limiter.record_failure(query)
@@ -185,7 +197,8 @@ def rate_limited_api_call(
                     logger.error(f"All {max_retries} attempts exhausted due to rate limiting")
                     raise e
             else:
-                # Non-rate-limit error, re-raise immediately
+                # Non-rate-limit error, re-raise immediately with context
+                logger.error(f"Non-rate-limit error on attempt {attempt + 1}: {error_str}")
                 raise e
     
     raise Exception(f"Failed after {max_retries} attempts")

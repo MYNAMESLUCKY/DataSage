@@ -376,8 +376,18 @@ Please provide your answer in JSON format:
                 max_retries=7  # Increased for complex queries
             )
         except Exception as e:
+            import traceback
+            error_traceback = traceback.format_exc()
             logger.error(f"Error generating answer: {e}")
-            return self._generate_fallback_answer(query, context)
+            logger.error(f"Full traceback: {error_traceback}")
+            return {
+                "answer": f"Failed to generate response: {str(e)}", 
+                "confidence": 0.0,
+                "status": "error",
+                "model_used": model,
+                "api_provider": self.api_provider,
+                "error_details": error_traceback
+            }
     
     def _try_fallback_model(self) -> bool:
         """No fallback models allowed - SARVAM only"""
