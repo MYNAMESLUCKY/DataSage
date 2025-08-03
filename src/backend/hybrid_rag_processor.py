@@ -42,7 +42,8 @@ class HybridRAGProcessor:
         query: str, 
         llm_model: Optional[str] = None,
         use_web_search: bool = True,
-        max_web_results: int = 3,
+        max_web_results: int = 10,  # Increased default to support more sources
+        max_results: int = 10,      # Added max_results parameter
         **kwargs
     ) -> Dict[str, Any]:
         """
@@ -61,6 +62,7 @@ class HybridRAGProcessor:
             cache_key_params = {
                 'use_web_search': use_web_search,
                 'max_web_results': max_web_results,
+                'max_results': max_results,
                 'llm_model': llm_model
             }
             
@@ -98,7 +100,7 @@ class HybridRAGProcessor:
                     kb_docs = self.enhanced_retrieval.enhanced_similarity_search(
                         self.vector_store,
                         variant_query, 
-                        k=8  # Fewer per query since we have multiple queries
+                        k=max(8, max_results // len(query_rewrites))  # Scale with max_results
                     )
                     all_kb_docs.extend(kb_docs)
             
@@ -114,7 +116,7 @@ class HybridRAGProcessor:
             # Rerank the combined results
             if unique_kb_docs:
                 logger.info(f"Reranking {len(unique_kb_docs)} unique knowledge base documents...")
-                reranked_kb = self.reranker.rerank_documents(query, unique_kb_docs, top_k=10)
+                reranked_kb = self.reranker.rerank_documents(query, unique_kb_docs, top_k=max_results)
                 kb_docs = [doc for doc, score in reranked_kb]
             else:
                 kb_docs = []

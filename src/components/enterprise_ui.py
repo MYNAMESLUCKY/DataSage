@@ -399,7 +399,8 @@ class EnterpriseUI:
                         query=query,
                         llm_model=model,
                         use_web_search=True,
-                        max_web_results=max_results
+                        max_web_results=max_results,
+                        max_results=max_results  # Pass the user's setting
                     )
                     
                     # Show processing strategy used
