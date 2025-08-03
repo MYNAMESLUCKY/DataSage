@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 import plotly.express as px
 from typing import Dict, List, Optional, Any
 import logging
+import requests
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -16,11 +18,12 @@ class EnterpriseUI:
     
     def __init__(self, api):
         self.api = api
+        self.api_gateway_url = "http://localhost:8000"
     
     def render(self):
         """Main render method for the enterprise interface"""
         # Create tabs for different sections
-        tabs = st.tabs(["🔍 Query System", "📁 File Processing", "📊 Analytics", "⚙️ System"])
+        tabs = st.tabs(["🔍 Query System", "📁 File Processing", "🔑 API Keys", "📊 Analytics", "⚙️ System"])
         
         with tabs[0]:
             self.render_query_with_enhancements()
@@ -29,13 +32,16 @@ class EnterpriseUI:
             self.render_async_file_processor()
         
         with tabs[2]:
+            self.render_api_key_management()
+        
+        with tabs[3]:
             col1, col2 = st.columns(2)
             with col1:
                 self.render_cache_analytics()
             with col2:
                 self.render_system_dashboard()
         
-        with tabs[3]:
+        with tabs[4]:
             self.render_system_info()
     
     def render_async_file_processor(self):

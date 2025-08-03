@@ -123,6 +123,21 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Import and include API key management router
+try:
+    import sys
+    import os
+    src_path = os.path.join(os.path.dirname(__file__), 'src')
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+    
+    from api.key_endpoints import router as key_router
+    app.include_router(key_router)
+    logger.info("API key management endpoints loaded successfully")
+except Exception as e:
+    logger.warning(f"Failed to load API key management endpoints: {e}")
+    # Continue without key management if there are import issues
+
 # Middleware
 app.add_middleware(
     CORSMiddleware,
