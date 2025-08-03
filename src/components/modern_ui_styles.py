@@ -395,6 +395,7 @@ def apply_modern_styling():
     }
     </style>
     """, unsafe_allow_html=True)
+    return None
 
 def create_metric_card(title: str, value: str, delta: str = None, delta_color: str = "normal"):
     """Create a clean metric card"""

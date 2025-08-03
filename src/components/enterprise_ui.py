@@ -40,21 +40,27 @@ class EnterpriseUI:
         tabs = st.tabs(["🔍 Query System", "🤖 Agentic RAG", "📁 File Processing", "🔑 API Keys", "📊 Analytics", "⚙️ System"])
         
         with tabs[0]:
+            st.session_state.current_tab = 'Query System'
             self.render_query_with_enhancements()
         
         with tabs[1]:
+            st.session_state.current_tab = 'Agentic RAG'
             self.render_agentic_rag()
         
         with tabs[2]:
+            st.session_state.current_tab = 'File Processing'
             self.render_async_file_processor()
         
         with tabs[3]:
+            st.session_state.current_tab = 'API Keys'
             self.render_api_key_management()
         
         with tabs[4]:
+            st.session_state.current_tab = 'Analytics'
             self.render_advanced_analytics()
         
         with tabs[5]:
+            st.session_state.current_tab = 'System'
             self.render_system_info()
     
     def render_async_file_processor(self):
@@ -182,7 +188,7 @@ class EnterpriseUI:
                         if st.button("Cancel", key=f"cancel_{task['task_id']}"):
                             if self.api.cancel_processing_task(task['task_id']):
                                 st.success("Task cancelled")
-                                st.rerun()
+                                # Removed st.rerun() to prevent AI response interference
             
             # Show completed tasks summary
             if completed_tasks:
@@ -192,10 +198,10 @@ class EnterpriseUI:
                     files_count = task.get('metadata', {}).get('file_count', 0)
                     st.write(f"{status_icon} {task['task_type']}: {files_count} files - {task['message']}")
         
-        # Auto-refresh for active tasks
-        if active_tasks:
-            time.sleep(2)
-            st.rerun()
+        # Auto-refresh for active tasks (disabled to prevent AI response interference)
+        # if active_tasks and st.session_state.get('allow_task_refresh', False):
+        #     time.sleep(2)
+        #     st.rerun()
     
     def render_cache_analytics(self):
         """Render cache performance analytics"""
@@ -256,13 +262,13 @@ class EnterpriseUI:
                 if st.button("🧹 Clear Cache"):
                     self.api.cache_manager.cache.clear()
                     st.success("Cache cleared successfully!")
-                    st.rerun()
+                    # Removed st.rerun() to prevent AI response interference
             
             with col2:
                 if st.button("♻️ Clean Expired"):
                     self.api.cache_manager.clear_expired()
                     st.success("Expired entries removed!")
-                    st.rerun()
+                    # Removed st.rerun() to prevent AI response interference
                     
         except Exception as e:
             st.error(f"Error loading cache analytics: {str(e)}")
@@ -931,8 +937,13 @@ print(result['answer'])
         if 'analytics_last_refresh' not in st.session_state:
             st.session_state.analytics_last_refresh = time.time()
         
-        # Check if 30 seconds have passed
-        if time.time() - st.session_state.analytics_last_refresh > 30:
+        # Check if 30 seconds have passed (only in analytics tab)
+        current_tab = st.session_state.get('current_tab', '')
+        auto_refresh_enabled = st.session_state.get('analytics_auto_refresh', True)
+        
+        if (current_tab == 'Analytics' and 
+            auto_refresh_enabled and
+            time.time() - st.session_state.analytics_last_refresh > 30):
             st.session_state.analytics_last_refresh = time.time()
             st.rerun()
         
@@ -945,7 +956,8 @@ print(result['answer'])
                 st.session_state.analytics_last_refresh = time.time()
                 st.rerun()
         with col3:
-            auto_refresh = st.checkbox("Auto-refresh", value=True)
+            auto_refresh = st.checkbox("Auto-refresh", value=True, key="analytics_auto_refresh_checkbox")
+            st.session_state.analytics_auto_refresh = auto_refresh
             if not auto_refresh:
                 st.session_state.analytics_last_refresh = float('inf')  # Disable auto-refresh
         
