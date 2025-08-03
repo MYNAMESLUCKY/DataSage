@@ -267,32 +267,17 @@ Please provide your answer in JSON format:
             logger.error(f"API call failed: {e}")
             logger.warning(f"Falling back to knowledge base answer generation")
             
-            # Check if it's a rate limit error - use Tavily instead of KB fallback
-            if "rate limit" in str(e).lower():
-                logger.info("Rate limit detected - switching to Tavily web search")
-                try:
-                    # Use Tavily to get fresh information instead of KB fallback
-                    tavily_result = self._generate_tavily_fallback_answer(query)
-                    tavily_result.update({
-                        "model_used": f"{model} (Tavily fallback)",
-                        "api_provider": "Tavily Web Search",
-                        "status": "success_tavily_fallback",
-                        "fallback_reason": "Rate limit exceeded - used Tavily web search"
-                    })
-                    return tavily_result
-                except Exception as tavily_error:
-                    logger.warning(f"Tavily fallback also failed: {tavily_error}")
-                    # Only use KB as last resort if Tavily fails
-                    if context.strip():
-                        logger.info("Using knowledge base as emergency fallback after Tavily failure")
-                        fallback_result = self._generate_enhanced_fallback_answer(query, context)
-                        fallback_result.update({
-                            "model_used": f"{model} (emergency KB fallback)",
-                            "api_provider": f"{self.api_provider} (emergency fallback)",
-                            "status": "emergency_kb_fallback",
-                            "fallback_reason": f"Rate limit + Tavily failed - emergency KB use: {str(tavily_error)}"
-                        })
-                        return fallback_result
+            # Check if it's a rate limit error and we have context - use KB fallback
+            if "rate limit" in str(e).lower() and context.strip():
+                logger.info("Rate limit detected - using enhanced knowledge base fallback")
+                fallback_result = self._generate_enhanced_fallback_answer(query, context)
+                fallback_result.update({
+                    "model_used": f"{model} (KB fallback)",
+                    "api_provider": f"{self.api_provider} (KB fallback)",
+                    "status": "success_kb_fallback",
+                    "fallback_reason": "Rate limit exceeded - used knowledge base"
+                })
+                return fallback_result
             else:
                 # For other errors, try basic fallback
                 fallback_result = self._generate_fallback_answer(query, context)
