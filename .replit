@@ -26,7 +26,7 @@ args = "Enterprise Backend"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Frontend React App"
+args = "Streamlit App"
 
 [[workflows.workflow]]
 name = "API Gateway"
@@ -47,12 +47,12 @@ args = "cd /home/runner/workspace && python -m src.backend.enterprise_api"
 waitForPort = 8001
 
 [[workflows.workflow]]
-name = "Frontend React App"
+name = "Streamlit App"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd frontend && PORT=5000 npm run dev"
+args = "streamlit run app.py --server.port 5000"
 waitForPort = 5000
 
 [[ports]]
