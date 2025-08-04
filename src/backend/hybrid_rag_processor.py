@@ -10,6 +10,8 @@ from .web_cache_db import WebCacheDatabase
 from .query_processor import AdvancedQueryProcessor
 from .reranker import AdvancedReranker
 from .enhanced_cache import get_cache_manager
+from .complexity_classifier import classify_query_complexity, ComplexityLevel
+from .gpu_processor import gpu_processor
 
 logger = setup_logging(__name__)
 
@@ -36,6 +38,9 @@ class HybridRAGProcessor:
         self.query_processor = AdvancedQueryProcessor(rag_engine)
         self.reranker = AdvancedReranker(rag_engine)
         self.cache_manager = get_cache_manager()
+        
+        # GPU processing for complex queries
+        self.gpu_processor = gpu_processor
     
     def process_intelligent_query(
         self, 
@@ -79,8 +84,12 @@ class HybridRAGProcessor:
                     cached_result['processing_time'] = time.time() - start_time
                     return cached_result
             
-            # STEP 0: Advanced Query Processing
-            logger.info("STEP 0: Processing query with advanced techniques...")
+            # STEP 0: Classify query complexity for GPU processing decision
+            complexity_analysis = classify_query_complexity(query)
+            logger.info(f"Query complexity: {complexity_analysis.score:.3f} ({complexity_analysis.level.value}) - GPU recommended: {complexity_analysis.gpu_recommended}")
+            
+            # STEP 0.5: Advanced Query Processing
+            logger.info("STEP 0.5: Processing query with advanced techniques...")
             query_analysis = self.query_processor.process_query_comprehensive(query)
             
             # Extract processing results
@@ -252,19 +261,98 @@ class HybridRAGProcessor:
                 except Exception as e:
                     logger.warning(f"Failed to update knowledge base: {e}")
             
-            # STEP 5: Generate comprehensive answer
-            logger.info("STEP 5: Generating comprehensive answer from all sources...")
+            # STEP 5: Determine processing strategy based on complexity
+            logger.info("STEP 5: Determining processing strategy based on query complexity...")
             
             if not final_docs:
                 final_docs = kb_docs[:10]  # Fallback
             
-            # Always ensure we can provide an answer with available data
-            try:
+            # Check if GPU processing is recommended for this complex query
+            if complexity_analysis.gpu_recommended and complexity_analysis.score >= 0.6:
+                logger.info(f"Complex query detected (score: {complexity_analysis.score:.3f}) - attempting GPU processing")
+                
+                try:
+                    # Prepare context for GPU processing
+                    context = self.rag_engine._prepare_context(final_docs)
+                    
+                    # Use async GPU processing (simulate with sync call for now)
+                    import asyncio
+                    
+                    async def gpu_process():
+                        async with self.gpu_processor as gpu:
+                            return await gpu.process_on_gpu(
+                                query=query,
+                                context=context,
+                                complexity_score=complexity_analysis.score
+                            )
+                    
+                    # Execute GPU processing
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
+                    gpu_response = loop.run_until_complete(gpu_process())
+                    
+                    if gpu_response.success:
+                        logger.info(f"GPU processing successful in {gpu_response.compute_time:.2f}s")
+                        
+                        result = {
+                            'answer': gpu_response.result,
+                            'confidence': gpu_response.confidence,
+                            'status': 'success_gpu',
+                            'model_used': f"GPU-{gpu_response.provider.value if gpu_response.provider else 'distributed'}",
+                            'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
+                            'gpu_processing': True,
+                            'gpu_compute_time': gpu_response.compute_time,
+                            'complexity_analysis': {
+                                'score': complexity_analysis.score,
+                                'level': complexity_analysis.level.value,
+                                'reasoning': complexity_analysis.reasoning
+                            }
+                        }
+                    else:
+                        logger.warning(f"GPU processing failed: {gpu_response.error}")
+                        raise Exception(f"GPU processing failed: {gpu_response.error}")
+                        
+                except Exception as gpu_error:
+                    logger.warning(f"GPU processing failed, falling back to standard processing: {gpu_error}")
+                    
+                    # Fallback to standard processing
+                    result = self.rag_engine.generate_answer(
+                        query=query,
+                        relevant_docs=final_docs,
+                        llm_model=llm_model
+                    )
+                    
+                    # Add complexity info to standard result
+                    result['gpu_processing'] = False
+                    result['gpu_fallback_reason'] = str(gpu_error)
+                    result['complexity_analysis'] = {
+                        'score': complexity_analysis.score,
+                        'level': complexity_analysis.level.value,
+                        'gpu_recommended': True,
+                        'gpu_failed': True
+                    }
+            
+            else:
+                # Standard processing for simple/moderate queries
+                logger.info("Standard processing for simple/moderate complexity query")
+                
                 result = self.rag_engine.generate_answer(
                     query=query,
                     relevant_docs=final_docs,
                     llm_model=llm_model
                 )
+                
+                # Add complexity info
+                result['gpu_processing'] = False
+                result['complexity_analysis'] = {
+                    'score': complexity_analysis.score,
+                    'level': complexity_analysis.level.value,
+                    'gpu_recommended': False
+                }
                 
                 # Check if result indicates failure but we have documents - use KB fallback
                 if (result.get('status') == 'error' and final_docs and 

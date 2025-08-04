@@ -33,6 +33,15 @@ Preferred communication style: Simple, everyday language.
 - ✅ Enhanced KB fallback with intelligent text processing and relevance scoring
 - ✅ Always provides answers when relevant information exists in knowledge base, even during API rate limits
 
+## GPU-Based Distributed Computing Architecture (August 4, 2025)
+- ✅ Advanced query complexity classification system (0-1 scale) for intelligent processing routing
+- ✅ GPU processing manager with support for free cloud GPU services (Colab, Kaggle, HuggingFace, etc.)
+- ✅ Automatic complexity analysis determines when to use GPU acceleration vs standard processing
+- ✅ Multi-provider GPU architecture with fallback chains and load balancing
+- ✅ Enhanced response quality for complex queries through distributed computing
+- ✅ Comprehensive GPU service recommendations and optimization strategies
+- ✅ Backend-only implementation with transparent integration into existing RAG pipeline
+
 ## API Gateway Implementation (August 3, 2025)
 - ✅ Built comprehensive FastAPI-based REST API Gateway on port 8000
 - ✅ JWT authentication with role-based access control
@@ -74,7 +83,14 @@ Preferred communication style: Simple, everyday language.
 # System Architecture
 
 ## Project Structure
-The project follows a clean, organized structure with `app.py` as the main entry point. Core logic resides in `src/backend/`, UI components in `src/components/`, configurations in `src/config/`, and utilities in `src/utils/`.
+The project follows a clean, organized structure with `enterprise_app.py` as the main entry point. Core logic resides in `src/backend/`, UI components in `src/components/`, configurations in `src/config/`, and utilities in `src/utils/`.
+
+## GPU Computing Architecture
+- **Complexity Classification**: Advanced algorithm analyzes query complexity (0-1 scale) using pattern matching, vocabulary analysis, and structural indicators
+- **GPU Service Manager**: Distributed processing across multiple free GPU platforms with intelligent provider selection
+- **Processing Pipeline**: Automatic routing of complex queries (score ≥ 0.6) to GPU infrastructure for enhanced computational capabilities
+- **Fallback System**: Graceful degradation from GPU → Standard API → Knowledge Base fallback ensuring reliable responses
+- **Service Integration**: Support for Google Colab, Kaggle Kernels, HuggingFace Spaces, Paperspace, Lightning AI, and Saturn Cloud
 
 ## Frontend Architecture
 -   **Framework**: Streamlit for rapid web application development.
