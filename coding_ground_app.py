@@ -115,7 +115,7 @@ class CodingGroundAPI:
         
         try:
             response = self.session.post(f"{self.base_url}/code/generate", 
-                                       headers=headers, json=payload, timeout=60)
+                                       headers=headers, json=payload, timeout=90)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -142,7 +142,7 @@ class CodingGroundAPI:
         
         try:
             response = self.session.post(f"{self.base_url}/code/explain", 
-                                       headers=headers, json=payload, timeout=60)
+                                       headers=headers, json=payload, timeout=90)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -170,7 +170,7 @@ class CodingGroundAPI:
         
         try:
             response = self.session.post(f"{self.base_url}/code/fix", 
-                                       headers=headers, json=payload, timeout=60)
+                                       headers=headers, json=payload, timeout=90)
             if response.status_code == 200:
                 return response.json()
             else:
