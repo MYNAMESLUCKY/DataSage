@@ -100,8 +100,12 @@ class AuthResponse(BaseModel):
 
 # Initialize services
 free_llm_manager = get_free_llm_manager()
-serper_service = get_serper_service()
+serper_search = get_serper_service()
 subscription_manager = get_subscription_manager()
+
+# Initialize Tavily service
+from .tavily_integration import get_tavily_integration_service
+tavily_integration_service = get_tavily_integration_service()
 
 # Initialize simple fallback system for demo
 class SimpleFallbackRAG:
@@ -214,13 +218,38 @@ async def _process_with_standard_apis(request: QueryRequest, strategy: Dict[str,
     
     # Get web search results using Tavily API if available
     web_results = []
-    if request.search_web and serper_service.is_available():
-        web_results = await serper_service.search(
-            query=request.query,
-            user_id=request.user_id,
-            subscription_tier=request.subscription_tier,
-            max_results=min(strategy['max_sources'], 5)
-        )
+    if request.search_web:
+        try:
+            if tavily_integration_service.is_ready:
+                tavily_results = tavily_integration_service.search_and_fetch(
+                    query=request.query,
+                    max_results=min(strategy['max_sources'], 5)
+                )
+                # Convert Tavily results to SearchResult-like objects
+                for tavily_result in tavily_results:
+                    web_result = type('SearchResult', (), {
+                        'title': tavily_result.title,
+                        'url': tavily_result.url,
+                        'snippet': tavily_result.content[:200] + "..." if len(tavily_result.content) > 200 else tavily_result.content,
+                        'position': len(web_results) + 1,
+                        'date': tavily_result.published_date,
+                        'source': tavily_result.url.split('/')[2] if '/' in tavily_result.url else tavily_result.url
+                    })
+                    web_results.append(web_result)
+                logger.info(f"Tavily search returned {len(web_results)} results")
+        except Exception as e:
+            logger.error(f"Web search failed: {e}")
+            # Fallback to Serper if available
+            if serper_search.is_available():
+                try:
+                    web_results = await serper_search.search(
+                        query=request.query,
+                        user_id=request.user_id,
+                        subscription_tier=request.subscription_tier,
+                        max_results=min(strategy['max_sources'], 5)
+                    )
+                except Exception as serper_error:
+                    logger.error(f"Serper fallback failed: {serper_error}")
     
     # Combine context efficiently for standard processing
     context_parts = []
@@ -328,15 +357,40 @@ async def _process_with_gpu_acceleration(request: QueryRequest, strategy: Dict[s
         strategy['max_sources']
     )
     
-    # Enhanced web search for complex queries
+    # Enhanced web search for complex queries using Tavily
     web_results = []
-    if request.search_web and serper_service.is_available():
-        web_results = await serper_service.search(
-            query=request.query,
-            user_id=request.user_id,
-            subscription_tier=request.subscription_tier,
-            max_results=strategy['max_sources']
-        )
+    if request.search_web:
+        try:
+            if tavily_integration_service.is_ready:
+                tavily_results = tavily_integration_service.search_and_fetch(
+                    query=request.query,
+                    max_results=strategy['max_sources']
+                )
+                # Convert Tavily results to SearchResult-like objects
+                for tavily_result in tavily_results:
+                    web_result = type('SearchResult', (), {
+                        'title': tavily_result.title,
+                        'url': tavily_result.url,
+                        'snippet': tavily_result.content[:300] + "..." if len(tavily_result.content) > 300 else tavily_result.content,
+                        'position': len(web_results) + 1,
+                        'date': tavily_result.published_date,
+                        'source': tavily_result.url.split('/')[2] if '/' in tavily_result.url else tavily_result.url
+                    })
+                    web_results.append(web_result)
+                logger.info(f"Tavily search returned {len(web_results)} results for complex query")
+        except Exception as e:
+            logger.error(f"Enhanced web search failed: {e}")
+            # Fallback to Serper if available
+            if serper_search.is_available():
+                try:
+                    web_results = await serper_search.search(
+                        query=request.query,
+                        user_id=request.user_id,
+                        subscription_tier=request.subscription_tier,
+                        max_results=strategy['max_sources']
+                    )
+                except Exception as serper_error:
+                    logger.error(f"Serper fallback failed: {serper_error}")
     
     # Comprehensive context building for sophisticated queries
     context_parts = []
@@ -360,13 +414,12 @@ async def _process_with_gpu_acceleration(request: QueryRequest, strategy: Dict[s
     Use the context information to support your response with specific examples and detailed explanations.
     """
     
-    # Try GPU-accelerated LLM first, fallback to SARVAM
+    # Try advanced LLM processing, fallback to SARVAM
     llm_response = await free_llm_manager.generate_response(
         prompt=enhanced_prompt,
         user_id=request.user_id,
         subscription_tier=request.subscription_tier,
-        model_preference="gpu-llama-3.2" if request.model_preference is None else request.model_preference,
-        use_gpu=True
+        model_preference="sarvam-m" if request.model_preference is None else request.model_preference
     )
     
     if llm_response['status'] != 'success':
@@ -439,7 +492,7 @@ async def health_check():
         "timestamp": time.time(),
         "services": {
             "llm_manager": free_llm_manager is not None,
-            "search_service": serper_service.is_available() if serper_service else False,
+            "search_service": serper_search.is_available() if serper_search else False,
             "subscription_manager": subscription_manager is not None,
             "query_classifier": True
         }
@@ -499,7 +552,7 @@ async def get_system_status():
     
     # Get service availability
     models_available = len(free_llm_manager.models)
-    serper_available = serper_service.is_available()
+    serper_available = serper_search.is_available()
     
     return SystemStatus(
         gpu_providers_available=0,  # No GPU providers configured yet
@@ -574,7 +627,7 @@ async def search_web(
 ):
     """Perform web search using Serper API"""
     
-    results = await serper_service.search(
+    results = await serper_search.search(
         query=query,
         user_id=user_id,
         subscription_tier=subscription_tier,
@@ -602,7 +655,7 @@ async def startup_event():
     """Initialize services on startup"""
     logger.info("Starting Enterprise RAG API...")
     logger.info(f"Free LLM models available: {len(free_llm_manager.models)}")
-    logger.info(f"Serper search available: {serper_service.is_available()}")
+    logger.info(f"Serper search available: {serper_search.is_available()}")
     logger.info("Enterprise API initialized successfully")
 
 @app.on_event("shutdown")
