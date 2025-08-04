@@ -345,9 +345,11 @@ class AuthenticationSystem:
 # Streamlit session state integration
 def init_auth_session():
     """Initialize authentication in Streamlit session"""
+    # Force clear any existing session data to prevent cross-user contamination
     if 'auth_system' not in st.session_state:
         st.session_state.auth_system = AuthenticationSystem()
     
+    # Always initialize these to prevent user session mixing
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
     
@@ -356,6 +358,16 @@ def init_auth_session():
     
     if 'user_info' not in st.session_state:
         st.session_state.user_info = None
+        
+    # Generate unique session ID to prevent cross-contamination
+    if 'session_id' not in st.session_state:
+        import uuid
+        st.session_state.session_id = str(uuid.uuid4())
+        
+    # Clear any cached user data if session is not authenticated
+    if not st.session_state.get('authenticated', False):
+        st.session_state.user_info = None
+        st.session_state.user_token = None
 
 def check_authentication() -> bool:
     """Check if user is authenticated"""
@@ -372,13 +384,32 @@ def check_authentication() -> bool:
     
     user_data = auth_system.verify_session(st.session_state.user_token)
     if not user_data:
-        # Clear invalid session
-        st.session_state.authenticated = False
-        st.session_state.user_token = None
-        st.session_state.user_info = None
+        # Clear invalid session completely
+        clear_user_session()
         return False
     
+    # Ensure user_info matches the token to prevent session mixing
+    if st.session_state.get('user_info'):
+        token_username = user_data.get('username')
+        session_username = st.session_state.user_info.get('username')
+        
+        if token_username != session_username:
+            # Mismatch detected - clear session for security
+            clear_user_session()
+            return False
+    
     return True
+
+def clear_user_session():
+    """Completely clear user session data"""
+    st.session_state.authenticated = False
+    st.session_state.user_token = None
+    st.session_state.user_info = None
+    
+    # Clear any other user-specific data
+    for key in list(st.session_state.keys()):
+        if key.startswith('user_') or key in ['query_history', 'upload_history']:
+            del st.session_state[key]
 
 def require_auth(allowed_roles=None):
     """Decorator to require authentication for Streamlit functions"""

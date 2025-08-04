@@ -5,6 +5,7 @@ Authentication UI Components for Enterprise RAG System
 import streamlit as st
 from typing import Optional
 import time
+from datetime import datetime
 from ..auth.auth_system import AuthenticationSystem, UserRole, init_auth_session, check_authentication
 from ..security.rate_limiter import RateLimiter, RateLimitType, rate_limit
 import os
@@ -273,14 +274,20 @@ def process_firebase_token(id_token: str):
             )
             
             if user_result['success'] or "already exists" in user_result.get('message', ''):
-                # Set session state
+                # Clear any existing session data first to prevent contamination
+                from src.auth.auth_system import clear_user_session
+                clear_user_session()
+                
+                # Set fresh session state for this specific user
                 st.session_state.authenticated = True
                 st.session_state.user_token = id_token
                 st.session_state.user_info = {
                     'username': username,
                     'email': verified_user['email'],
                     'role': role.value,
-                    'provider': 'firebase'
+                    'provider': 'firebase',
+                    'session_id': st.session_state.get('session_id'),
+                    'login_time': str(datetime.now())
                 }
                 
                 st.success(f"✅ Successfully authenticated as {verified_user.get('name', verified_user['email'])} ({role.value})")
@@ -334,12 +341,19 @@ def show_standard_login_form():
                 result = auth_system.authenticate_user(username, password)
                 
                 if result["success"]:
+                    # Clear any existing session data first to prevent contamination
+                    from src.auth.auth_system import clear_user_session
+                    clear_user_session()
+                    
+                    # Set fresh session state for this specific user
                     st.session_state.authenticated = True
                     st.session_state.user_token = result["token"]
                     st.session_state.user_info = {
                         "username": result["username"],
                         "role": result["role"],
-                        "provider": "local"
+                        "provider": "local",
+                        "session_id": st.session_state.get('session_id'),
+                        "login_time": str(datetime.now())
                     }
                     st.success("✅ Login successful!")
                     time.sleep(1)
