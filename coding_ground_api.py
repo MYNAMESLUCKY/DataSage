@@ -190,11 +190,15 @@ class CodingAIEngine:
             raise HTTPException(status_code=500, detail=f"Code fixing failed: {str(e)}")
     
     async def _call_ai_model(self, model_id: str, prompt: str) -> str:
-        """Call the specified AI model"""
+        """Call the specified AI model with fallback handling"""
         if model_id not in MODELS_CONFIG:
             raise ValueError(f"Unknown model: {model_id}")
         
         config = MODELS_CONFIG[model_id]
+        
+        # Check if API key is available
+        if not config['api_key']:
+            return self._generate_fallback_response(prompt, model_id)
         
         headers = {
             "Authorization": f"Bearer {config['api_key']}",
@@ -217,19 +221,23 @@ class CodingAIEngine:
             "temperature": 0.3
         }
         
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{config['base_url']}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=60)
-            ) as response:
-                if response.status == 200:
-                    result = await response.json()
-                    return result["choices"][0]["message"]["content"]
-                else:
-                    error_text = await response.text()
-                    raise Exception(f"API call failed: {response.status} - {error_text}")
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{config['base_url']}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as response:
+                    if response.status == 200:
+                        result = await response.json()
+                        return result["choices"][0]["message"]["content"]
+                    else:
+                        error_text = await response.text()
+                        raise Exception(f"API call failed: {response.status} - {error_text}")
+        except Exception as e:
+            logger.error(f"Network error calling {model_id}: {e}")
+            return self._generate_fallback_response(prompt, model_id)
     
     def _build_code_generation_prompt(self, prompt: str, language: str, context: str, docs: str) -> str:
         """Build enhanced prompt for code generation"""
@@ -358,6 +366,122 @@ EXPLANATION:
             keywords.append("await")
         
         return keywords[:5]  # Limit to top 5 concepts
+    
+    def _generate_fallback_response(self, prompt: str, model_id: str) -> str:
+        """Generate fallback response when API is unavailable"""
+        # Analyze the prompt to provide intelligent responses
+        prompt_lower = prompt.lower()
+        
+        if "simple python code" in prompt_lower or "write a simple" in prompt_lower:
+            return """```python
+# Simple Python code example
+def hello_world():
+    \"\"\"
+    A simple function that prints a greeting message.
+    \"\"\"
+    print("Hello, World!")
+    return "Hello, World!"
+
+# Example usage
+if __name__ == "__main__":
+    message = hello_world()
+    print(f"Function returned: {message}")
+```
+
+EXPLANATION:
+This is a basic Python function that demonstrates:
+1. Function definition with def keyword
+2. Docstring for documentation
+3. Print statement for output
+4. Return value
+5. Main guard for script execution
+
+Note: API connectivity is currently limited. This is a fallback response demonstrating basic Python structure."""
+        
+        elif "class" in prompt_lower and "python" in prompt_lower:
+            return """```python
+class SimpleClass:
+    \"\"\"
+    A basic Python class example
+    \"\"\"
+    
+    def __init__(self, name):
+        self.name = name
+    
+    def greet(self):
+        return f"Hello, {self.name}!"
+    
+    def __str__(self):
+        return f"SimpleClass({self.name})"
+
+# Example usage
+obj = SimpleClass("World")
+print(obj.greet())
+```
+
+EXPLANATION:
+This demonstrates basic Python class structure with:
+1. Constructor (__init__) method
+2. Instance variables (self.name)
+3. Instance methods (greet)
+4. String representation (__str__)
+
+Note: This is a fallback response due to API connectivity issues."""
+        
+        elif "api" in prompt_lower or "request" in prompt_lower:
+            return """```python
+import requests
+
+def make_api_request(url, method='GET', data=None):
+    \"\"\"
+    Make a simple API request
+    \"\"\"
+    try:
+        if method.upper() == 'GET':
+            response = requests.get(url)
+        elif method.upper() == 'POST':
+            response = requests.post(url, json=data)
+        
+        response.raise_for_status()
+        return response.json()
+    
+    except requests.exceptions.RequestException as e:
+        print(f"API request failed: {e}")
+        return None
+
+# Example usage
+result = make_api_request("https://api.example.com/data")
+```
+
+EXPLANATION:
+Basic API request handling with:
+1. Error handling with try/except
+2. Support for GET/POST methods
+3. JSON response parsing
+4. HTTP status error checking
+
+Note: API connectivity limited - this is a fallback response."""
+        
+        else:
+            return f"""Based on your request: "{prompt}"
+
+I would normally generate specific code using the {model_id} AI model, but there are currently connectivity issues with the AI service.
+
+Here's a general approach for your coding task:
+
+1. **Identify the Requirements**: Break down what you need to accomplish
+2. **Choose the Right Tools**: Select appropriate libraries and frameworks
+3. **Structure Your Code**: Plan classes, functions, and data flow
+4. **Implement Step by Step**: Write code incrementally and test frequently
+5. **Handle Errors**: Add proper error handling and validation
+6. **Document Your Code**: Add comments and docstrings
+
+For immediate assistance, please try:
+- Checking the code examples in the project
+- Searching online documentation for your specific needs
+- Breaking down complex tasks into smaller, manageable pieces
+
+Note: This is a fallback response due to temporary API connectivity issues. Once resolved, you'll get full AI-powered code generation."""
 
 
 class WebDocumentationSearcher:
