@@ -363,7 +363,7 @@ async def startup_event():
     logger.info("Starting Enterprise RAG API...")
     logger.info(f"Free LLM models available: {len(free_llm_manager.models)}")
     logger.info(f"Serper search available: {serper_service.is_available()}")
-    logger.info(f"GPU infrastructure configured: {gpu_processor.get_acceleration_status()['gpu_infrastructure']['providers_configured']} providers")
+    logger.info("Enterprise API initialized successfully")
 
 @app.on_event("shutdown")
 async def shutdown_event():

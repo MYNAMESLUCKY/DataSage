@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+
   
   // Environment variables
   env: {
@@ -38,11 +38,8 @@ const nextConfig = {
     domains: ['example.com'],
   },
   
-  // Performance optimizations
-  experimental: {
-    esmExternals: true,
-    serverComponentsExternalPackages: ['@prisma/client'],
-  },
+  // External packages configuration
+  serverExternalPackages: ['@prisma/client'],
   
   // Build configuration
   typescript: {

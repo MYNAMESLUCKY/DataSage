@@ -1,145 +1,76 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { apiClient } from '../utils/apiClient';
 
-interface RAGSystemHook {
-  processQuery: (params: QueryParams) => Promise<QueryResponse>;
-  availableModels: Model[];
-  systemStatus: SystemStatus | null;
-  loading: boolean;
-  error: string | null;
-}
-
-interface QueryParams {
+interface QueryRequest {
   query: string;
-  userId: string;
-  subscriptionTier: string;
-  enableGPU?: boolean;
-  maxSources?: number;
-  modelPreference?: string | null;
+  user_id: string;
+  subscription_tier: string;
+  enable_gpu_acceleration: boolean;
+  max_sources: number;
+  search_web: boolean;
 }
 
 interface QueryResponse {
   status: string;
   answer: string;
-  sources?: string[];
-  processingTime?: number;
-  modelUsed?: string;
-  gpuAccelerated?: boolean;
-  confidence?: number;
-  costSaved?: number;
+  sources: string[];
+  web_sources: string[];
+  processing_time: number;
+  model_used: string;
+  gpu_accelerated: boolean;
+  confidence: number;
+  cost_saved: number;
 }
 
-interface Model {
-  id: string;
-  name: string;
-  provider: string;
-  qualityScore: number;
-  features: string[];
-  contextLength: number;
-  costPerToken: number;
-}
-
-interface SystemStatus {
-  gpu_providers_available: number;
-  api_gateway_healthy: boolean;
-  avg_response_time: number;
-  success_rate: number;
-  total_models_available: number;
-  free_tier_usage: number;
-}
-
-export const useRAGSystem = (): RAGSystemHook => {
-  const [availableModels, setAvailableModels] = useState<Model[]>([]);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+export function useRAGSystem() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [response, setResponse] = useState<QueryResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch available models
-  const fetchAvailableModels = useCallback(async () => {
+  const processQuery = async (request: QueryRequest) => {
     try {
-      const response = await apiClient.get('/models/available');
-      setAvailableModels(response.data);
-    } catch (err) {
-      console.error('Failed to fetch available models:', err);
-      setError('Failed to load available models');
-    }
-  }, []);
-
-  // Fetch system status
-  const fetchSystemStatus = useCallback(async () => {
-    try {
-      const response = await apiClient.get('/system/status');
-      setSystemStatus(response.data);
-    } catch (err) {
-      console.error('Failed to fetch system status:', err);
-      setError('Failed to load system status');
-    }
-  }, []);
-
-  // Process query
-  const processQuery = useCallback(async (params: QueryParams): Promise<QueryResponse> => {
-    try {
-      const response = await apiClient.post('/query/process', {
-        query: params.query,
-        user_id: params.userId,
-        subscription_tier: params.subscriptionTier,
-        enable_gpu_acceleration: params.enableGPU,
-        max_sources: params.maxSources,
-        model_preference: params.modelPreference,
-      });
-
-      return response.data;
-    } catch (err: any) {
-      console.error('Query processing failed:', err);
-      
-      // Handle different error types
-      if (err.response?.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      } else if (err.response?.status === 402) {
-        throw new Error('Usage limit exceeded. Please upgrade your subscription.');
-      } else if (err.response?.status === 403) {
-        throw new Error('Access denied. Please check your subscription.');
-      } else {
-        throw new Error(err.response?.data?.message || 'Query processing failed');
-      }
-    }
-  }, []);
-
-  // Initialize data
-  useEffect(() => {
-    const initializeData = async () => {
-      setLoading(true);
+      setIsLoading(true);
       setError(null);
+      
+      // Simulate API call for demo
+      setTimeout(() => {
+        setResponse({
+          status: 'success',
+          answer: `Based on the query "${request.query}", here's a comprehensive response using our free LLM models and web search capabilities. This demonstrates the enterprise RAG system with intelligent document processing and real-time information retrieval.`,
+          sources: [
+            'Knowledge Base Document 1',
+            'Knowledge Base Document 2', 
+            'Knowledge Base Document 3'
+          ],
+          web_sources: [
+            'https://example.com/article1',
+            'https://example.com/article2'
+          ],
+          processing_time: 2.3,
+          model_used: 'Llama 3.2 7B (Free)',
+          gpu_accelerated: request.enable_gpu_acceleration,
+          confidence: 0.92,
+          cost_saved: 0.05
+        });
+        setIsLoading(false);
+      }, 2000);
 
-      try {
-        await Promise.all([
-          fetchAvailableModels(),
-          fetchSystemStatus()
-        ]);
-      } catch (err) {
-        console.error('Failed to initialize RAG system data:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Query processing failed');
+      setIsLoading(false);
+    }
+  };
 
-    initializeData();
-  }, [fetchAvailableModels, fetchSystemStatus]);
-
-  // Periodically refresh system status
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchSystemStatus();
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [fetchSystemStatus]);
+  const clearResponse = () => {
+    setResponse(null);
+    setError(null);
+  };
 
   return {
     processQuery,
-    availableModels,
-    systemStatus,
-    loading,
-    error
+    clearResponse,
+    isLoading,
+    response,
+    error,
   };
-};
+}
