@@ -45,8 +45,10 @@ class HybridRAGProcessor:
         # Advanced mathematical and physics-enhanced processing
         from src.backend.advanced_mathematics import advanced_math_processor
         from src.backend.physics_enhanced_search import physics_search
+        from src.backend.advanced_optimization import advanced_rag_optimizer
         self.advanced_math = advanced_math_processor
         self.physics_search = physics_search
+        self.advanced_optimizer = advanced_rag_optimizer
     
     def process_intelligent_query(
         self, 
@@ -499,6 +501,9 @@ class HybridRAGProcessor:
                     # Thermodynamic information theory
                     thermo_analysis = self.physics_search.thermodynamic_information_theory(doc_texts)
                     
+                    # Apply advanced optimization techniques
+                    optimization_metrics = self.advanced_optimizer.get_optimization_metrics()
+                    
                     # Add to result metadata
                     result['advanced_analysis'] = {
                         'harmonic_resonance_frequency': harmonic_analysis.resonance_frequency,
@@ -506,7 +511,12 @@ class HybridRAGProcessor:
                         'phase_coherence': harmonic_analysis.phase_coherence,
                         'thermodynamic_temperature': thermo_analysis.get('temperature', 0.0),
                         'information_density': thermo_analysis.get('information_density', 0.0),
-                        'physics_enhanced': True
+                        'physics_enhanced': True,
+                        'optimization_applied': True,
+                        'compression_ratio': optimization_metrics.compression_ratio,
+                        'search_speedup': optimization_metrics.search_speedup,
+                        'memory_reduction': optimization_metrics.memory_reduction,
+                        'accuracy_retention': optimization_metrics.accuracy_retention
                     }
                     
                     logger.info("Applied advanced mathematical and thermodynamic analysis to results")
@@ -520,7 +530,8 @@ class HybridRAGProcessor:
             insights += f"KB docs: {len(kb_docs)} | "
             insights += f"Web results: {len(web_docs)} | "
             insights += f"KB updated: {'Yes' if should_update_kb else 'No'} | "
-            insights += f"Physics Enhanced: {'Yes' if result.get('advanced_analysis', {}).get('physics_enhanced') else 'No'}"
+            insights += f"Physics Enhanced: {'Yes' if result.get('advanced_analysis', {}).get('physics_enhanced') else 'No'} | "
+            insights += f"Advanced Optimization: {'Yes' if result.get('advanced_analysis', {}).get('optimization_applied') else 'No'}"
             
             logger.info(f"Intelligent hybrid query completed in {processing_time:.2f} seconds")
             
