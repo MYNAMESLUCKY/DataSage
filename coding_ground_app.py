@@ -369,23 +369,31 @@ def main():
                             context=st.session_state.current_code
                         )
                         
-                        if "error" in result:
-                            st.error(f"Error: {result['error']}")
-                        else:
-                            st.session_state.current_code = result.get("code", "")
+                        if result.get("success"):
+                            code = result.get("data", {}).get("code", "")
+                            explanation = result.get("data", {}).get("explanation", "")
+                            model_used = result.get("data", {}).get("model_used", selected_model)
+                            
+                            if code:
+                                st.session_state.current_code = code
+                                st.success(f"✅ Code generated using {model_info.get(model_used, {}).get('name', model_used)}")
+                            
                             st.session_state.chat_history.append({
                                 "type": "request",
                                 "content": user_input,
-                                "model": selected_model,
+                                "model": model_used,
                                 "timestamp": datetime.now().strftime("%H:%M:%S")
                             })
                             st.session_state.chat_history.append({
                                 "type": "response",
-                                "content": result.get("explanation", "Code generated successfully"),
-                                "code": result.get("code", ""),
+                                "content": explanation or "Code generated successfully",
+                                "code": code,
                                 "timestamp": datetime.now().strftime("%H:%M:%S")
                             })
                             st.rerun()
+                        else:
+                            error_msg = result.get("error", "Unknown error occurred")
+                            st.error(f"Generation failed: {error_msg}")
         
         with col1b:
             if st.button("📖 Explain Code", use_container_width=True):
@@ -396,15 +404,18 @@ def main():
                             model=selected_model
                         )
                         
-                        if "error" in result:
-                            st.error(f"Error: {result['error']}")
-                        else:
+                        if result.get("success"):
+                            explanation = result.get("data", {}).get("explanation", "")
+                            st.success("✅ Code explained successfully")
                             st.session_state.chat_history.append({
                                 "type": "explanation",
-                                "content": result.get("explanation", "Code explained"),
+                                "content": explanation or "Code analysis complete",
                                 "timestamp": datetime.now().strftime("%H:%M:%S")
                             })
                             st.rerun()
+                        else:
+                            error_msg = result.get("error", "Unknown error occurred")
+                            st.error(f"Explanation failed: {error_msg}")
         
         with col1c:
             if st.button("🔧 Fix Errors", use_container_width=True):
@@ -416,17 +427,22 @@ def main():
                             model=selected_model
                         )
                         
-                        if "error" in result:
-                            st.error(f"Error: {result['error']}")
-                        else:
-                            st.session_state.current_code = result.get("fixed_code", st.session_state.current_code)
+                        if result.get("success"):
+                            fixed_code = result.get("data", {}).get("fixed_code", st.session_state.current_code)
+                            explanation = result.get("data", {}).get("explanation", "")
+                            
+                            st.session_state.current_code = fixed_code
+                            st.success("✅ Code fixed successfully")
                             st.session_state.chat_history.append({
                                 "type": "fix",
-                                "content": result.get("explanation", "Code fixed"),
-                                "code": result.get("fixed_code", ""),
+                                "content": explanation or "Code has been fixed",
+                                "code": fixed_code,
                                 "timestamp": datetime.now().strftime("%H:%M:%S")
                             })
                             st.rerun()
+                        else:
+                            error_msg = result.get("error", "Unknown error occurred")
+                            st.error(f"Fix failed: {error_msg}")
         
         # Chat history
         st.subheader("💭 Chat History")
