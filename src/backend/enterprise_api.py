@@ -15,6 +15,7 @@ import uvicorn
 from src.backend.free_llm_models import get_free_llm_manager
 from src.backend.serper_search import get_serper_service
 from src.backend.subscription_system import get_subscription_manager
+from src.backend.auth_service import auth_service, User
 from src.utils.utils import setup_logging
 
 logger = setup_logging(__name__)
@@ -28,7 +29,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://your-frontend-domain.com"],
+    allow_origins=["http://localhost:5000", "http://localhost:3000", "https://your-frontend-domain.com"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -82,6 +83,19 @@ class SystemStatus(BaseModel):
     success_rate: float
     total_models_available: int
     free_tier_usage: float
+
+class AuthRequest(BaseModel):
+    email: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class AuthResponse(BaseModel):
+    user: Dict[str, Any]
+    token: str
 
 # Initialize services
 free_llm_manager = get_free_llm_manager()
@@ -250,6 +264,45 @@ async def get_available_models(subscription_tier: str = "free"):
         for model in models
     ]
 
+# Authentication endpoints
+@app.post("/api/v1/auth/login", response_model=AuthResponse)
+async def login(request: AuthRequest):
+    """Authenticate user and return JWT token"""
+    user = auth_service.authenticate_user(request.email, request.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = auth_service.create_jwt_token(user)
+    
+    return AuthResponse(
+        user={
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "subscription_tier": user.subscription_tier
+        },
+        token=token
+    )
+
+@app.post("/api/v1/auth/register", response_model=AuthResponse)
+async def register(request: RegisterRequest):
+    """Register new user and return JWT token"""
+    user = auth_service.create_user(request.email, request.name, request.password)
+    if not user:
+        raise HTTPException(status_code=400, detail="User already exists")
+    
+    token = auth_service.create_jwt_token(user)
+    
+    return AuthResponse(
+        user={
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "subscription_tier": user.subscription_tier
+        },
+        token=token
+    )
+
 @app.get("/api/v1/system/status", response_model=SystemStatus)
 async def get_system_status():
     """Get system status and health metrics"""
@@ -262,7 +315,7 @@ async def get_system_status():
     serper_available = serper_service.is_available()
     
     return SystemStatus(
-        gpu_providers_available=gpu_status['gpu_infrastructure']['providers_configured'],
+        gpu_providers_available=0,  # No GPU providers configured yet
         api_gateway_healthy=True,
         avg_response_time=2.5,  # Would be calculated from metrics
         success_rate=95.0,      # Would be calculated from metrics

@@ -2,7 +2,7 @@ modules = ["python-3.11", "nodejs-20"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["bash", "glibcLocales", "libxcrypt", "pkg-config", "xsimd"]
+packages = ["bash", "cargo", "glibcLocales", "libiconv", "libxcrypt", "pkg-config", "rustc", "xsimd"]
 
 [deployment]
 deploymentTarget = "autoscale"

@@ -1,10 +1,6 @@
 import React from 'react';
-import SimpleRagApp from '../components/SimpleRagApp';
+import MainApp from '../components/MainApp';
 
 export default function Home() {
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
-      <SimpleRagApp />
-    </div>
-  );
+  return <MainApp />;
 }

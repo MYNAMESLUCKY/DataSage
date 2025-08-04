@@ -11,11 +11,22 @@ import { useRAGSystem } from '../hooks/useRAGSystem';
 import { useSubscription } from '../hooks/useSubscription';
 import LoadingSpinner from './LoadingSpinner';
 import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism';
+// Simple code highlighting alternative
+const CodeBlock = ({ children, className }: any) => (
+  <pre style={{
+    backgroundColor: '#2d3748',
+    color: '#e2e8f0',
+    padding: '12px',
+    borderRadius: '6px',
+    overflow: 'auto',
+    fontSize: '14px'
+  }}>
+    <code className={className}>{children}</code>
+  </pre>
+);
 
 interface QueryInterfaceProps {
-  subscription: any;
+  user: any;
   className?: string;
 }
 
@@ -31,7 +42,7 @@ interface QueryResult {
   status: 'success' | 'error' | 'limited';
 }
 
-const QueryInterface: React.FC<QueryInterfaceProps> = ({ subscription, className = '' }) => {
+const QueryInterface: React.FC<QueryInterfaceProps> = ({ user, className = '' }) => {
   const [query, setQuery] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [results, setResults] = useState<QueryResult[]>([]);
@@ -360,18 +371,21 @@ const QueryResultCard: React.FC<{ result: QueryResult }> = ({ result }) => {
           <ReactMarkdown
             components={{
               code({ node, inline, className, children, ...props }) {
-                const match = /language-(\w+)/.exec(className || '');
-                return !inline && match ? (
-                  <SyntaxHighlighter
-                    style={tomorrow}
-                    language={match[1]}
-                    PreTag="div"
+                return !inline ? (
+                  <CodeBlock className={className} {...props}>
+                    {String(children).replace(/\n$/, '')}
+                  </CodeBlock>
+                ) : (
+                  <code 
+                    className={className} 
+                    style={{ 
+                      backgroundColor: '#f1f5f9', 
+                      padding: '2px 4px', 
+                      borderRadius: '3px',
+                      fontSize: '0.875em'
+                    }} 
                     {...props}
                   >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
-                ) : (
-                  <code className={className} {...props}>
                     {children}
                   </code>
                 );
