@@ -222,7 +222,7 @@ class CodingAIEngine:
                 f"{config['base_url']}/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=60
+                timeout=aiohttp.ClientTimeout(total=60)
             ) as response:
                 if response.status == 200:
                     result = await response.json()
@@ -481,7 +481,7 @@ CONTENT: {result.get('content', '')[:500]}...
 coding_engine = CodingAIEngine()
 
 # JWT token functions
-def create_access_token(data: dict, expires_delta: timedelta = None):
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -569,6 +569,143 @@ async def list_models():
             for model_id, config in MODELS_CONFIG.items()
         ]
     }
+
+class ProjectRequest(BaseModel):
+    name: str
+    description: str
+    language: str = "python"
+    framework: str = ""
+    features: List[str] = []
+
+class CodeReviewRequest(BaseModel):
+    code: str
+    language: str = "python"
+    focus_areas: List[str] = ["performance", "security", "best_practices"]
+
+@app.post("/projects/generate")
+async def generate_project_endpoint(
+    request: ProjectRequest,
+    current_user: dict = Depends(verify_token)
+):
+    """Generate a complete project structure with multiple files"""
+    try:
+        # Enhanced prompt for project generation
+        prompt = f"""
+Create a complete {request.language} project for: {request.name}
+
+DESCRIPTION: {request.description}
+FRAMEWORK: {request.framework or 'Standard library'}
+FEATURES: {', '.join(request.features) if request.features else 'Basic functionality'}
+
+Generate a project structure with:
+1. Main application file
+2. Configuration files
+3. Requirements/dependencies
+4. README with setup instructions
+5. Example usage
+6. Basic tests
+
+Provide the complete file structure and contents.
+"""
+        
+        # Search for relevant documentation
+        docs_context = await coding_engine.web_searcher.search_programming_docs(
+            query=f"{request.language} {request.framework} project structure best practices",
+            language=request.language
+        )
+        
+        enhanced_prompt = coding_engine._build_code_generation_prompt(
+            prompt, request.language, "", docs_context
+        )
+        
+        # Use the most advanced model for project generation
+        response = await coding_engine._call_ai_model("deepseek-r1", enhanced_prompt)
+        
+        return APIResponse(success=True, data={
+            "project_structure": response,
+            "language": request.language,
+            "framework": request.framework,
+            "documentation_used": bool(docs_context)
+        })
+        
+    except Exception as e:
+        logger.error(f"Project generation failed: {e}")
+        return APIResponse(success=False, error=str(e))
+
+@app.post("/code/review")
+async def code_review_endpoint(
+    request: CodeReviewRequest,
+    current_user: dict = Depends(verify_token)
+):
+    """Perform comprehensive code review with best practices analysis"""
+    try:
+        # Search for relevant code review guidelines
+        docs_context = await coding_engine.web_searcher.search_programming_docs(
+            query=f"{request.language} code review best practices security performance",
+            language=request.language
+        )
+        
+        # Build comprehensive review prompt
+        prompt = f"""
+Perform a comprehensive code review for the following {request.language} code:
+
+CODE TO REVIEW:
+```{request.language}
+{request.code}
+```
+
+FOCUS AREAS: {', '.join(request.focus_areas)}
+
+RELEVANT DOCUMENTATION:
+{docs_context if docs_context else "Standard best practices"}
+
+Please provide:
+1. SECURITY ANALYSIS - Identify potential vulnerabilities
+2. PERFORMANCE REVIEW - Suggest optimizations
+3. CODE QUALITY - Check style, readability, maintainability
+4. BEST PRACTICES - Verify adherence to language conventions
+5. SUGGESTIONS - Specific improvements with examples
+6. OVERALL SCORE - Rate the code quality (1-10)
+
+Format your response with clear sections and actionable recommendations.
+"""
+        
+        response = await coding_engine._call_ai_model("deepseek-r1", prompt)
+        
+        return APIResponse(success=True, data={
+            "review": response,
+            "language": request.language,
+            "focus_areas": request.focus_areas,
+            "documentation_used": bool(docs_context)
+        })
+        
+    except Exception as e:
+        logger.error(f"Code review failed: {e}")
+        return APIResponse(success=False, error=str(e))
+
+@app.get("/documentation/search")
+async def search_documentation_endpoint(
+    query: str,
+    language: str = "python",
+    current_user: dict = Depends(verify_token)
+):
+    """Search programming documentation and resources"""
+    try:
+        results = await coding_engine.web_searcher.search_programming_docs(
+            query=query,
+            language=language
+        )
+        
+        return APIResponse(success=True, data={
+            "query": query,
+            "language": language,
+            "documentation": results,
+            "sources_searched": ["Official docs", "Stack Overflow", "GitHub", "MDN"]
+        })
+        
+    except Exception as e:
+        logger.error(f"Documentation search failed: {e}")
+        return APIResponse(success=False, error=str(e))
 
 if __name__ == "__main__":
     import uvicorn
