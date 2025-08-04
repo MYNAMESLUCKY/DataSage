@@ -46,12 +46,21 @@ Preferred communication style: Simple, everyday language.
 - ✅ Added Serper Dev API for fast, cost-effective web search ($1 per 1,000 queries vs $50+ alternatives)
 - ✅ Implemented comprehensive subscription system with Free ($0), Pro ($29.99), Enterprise ($99.99) tiers
 - ✅ Built business logic protection with rate limiting, usage tracking, and abuse prevention
-- ✅ Created scalable FastAPI + React frontend architecture to replace Streamlit
+- ✅ **Frontend Migration**: Removed complex Next.js/React/Tailwind setup, implemented comprehensive Streamlit interface
+- ✅ **Intelligent Query Classification**: Added sophisticated query detection - GPU only for complex queries, SARVAM/Tavily for simple ones
 - ✅ Added intelligent model selection prioritizing free models for cost optimization
 - ✅ Implemented usage-based billing with SQLite database and Stripe integration ready
-- ✅ Built modern React components with TypeScript, Tailwind CSS, and real-time updates
+- ✅ Built professional Streamlit interface with authentication, analytics, document management
 - ✅ Created comprehensive API client with error handling, retries, and authentication
 - ✅ Added admin dashboard with subscription analytics and user management
+
+## Frontend Technology Decision (August 4, 2025)
+- ✅ **Migrated from Next.js to Streamlit** - Eliminated persistent Tailwind CSS/PostCSS configuration issues
+- ✅ **Simplified Architecture** - Reduced complexity while maintaining full enterprise features
+- ✅ **Professional UI** - Clean, modern interface with custom CSS styling and responsive design
+- ✅ **Complete Feature Parity** - Authentication, query processing, document management, analytics, settings
+- ✅ **API Integration** - Seamless connection to FastAPI backends on ports 8000/8001
+- ✅ **Cost Optimization** - Intelligent query classification reduces GPU usage costs
 
 ## API Gateway Implementation (August 3, 2025)
 - ✅ Built comprehensive FastAPI-based REST API Gateway on port 8000
