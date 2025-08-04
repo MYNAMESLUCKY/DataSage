@@ -74,9 +74,9 @@ class APIResponse(BaseModel):
 # AI Model Configuration
 MODELS_CONFIG = {
     "deepseek-r1": {
-        "base_url": "https://api.deepseek.com/v1",
+        "base_url": "https://api.openrouter.ai/api/v1",
         "api_key": os.getenv("DEEPSEEK_API"),
-        "model_name": "deepseek-reasoner",
+        "model_name": "deepseek/deepseek-r1",
         "description": "Advanced reasoning for complex coding problems"
     },
     "qwen3-coder-7b": {
