@@ -63,6 +63,33 @@ class HybridRAGProcessor:
         try:
             logger.info(f"Starting advanced hybrid RAG processing: {query[:100]}...")
             
+            # STEP -2: Speed optimization for simple queries
+            from src.backend.speed_optimizer import speed_optimizer
+            
+            if speed_optimizer.should_use_fast_path(query):
+                logger.info("Query eligible for speed optimization - checking fast cache")
+                
+                fast_response = speed_optimizer.get_optimized_response(query, self)
+                if fast_response and fast_response.get('optimization_path') in ['fast_cache', 'lightweight_processing']:
+                    processing_time = time.time() - start_time
+                    
+                    # Format as hybrid processor response
+                    return {
+                        'status': 'success',
+                        'answer': fast_response['answer'],
+                        'sources': fast_response.get('sources', []),
+                        'web_sources': [],
+                        'confidence': fast_response.get('confidence', 0.8),
+                        'model_used': f"{llm_model} (speed optimized)",
+                        'processing_time': processing_time,
+                        'optimization_used': True,
+                        'optimization_path': fast_response['optimization_path'],
+                        'fast_response_time_ms': fast_response.get('total_processing_time_ms', 0),
+                        'strategy': 'speed_optimized',
+                        'insights': f"Speed optimized processing - {fast_response['optimization_path']}",
+                        'cache_type': fast_response.get('cache_type', 'none')
+                    }
+            
             # STEP -1: Check cache first
             cache_key_params = {
                 'use_web_search': use_web_search,
