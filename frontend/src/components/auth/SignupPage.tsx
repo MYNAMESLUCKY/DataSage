@@ -48,8 +48,17 @@ export default function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProp
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Registration failed');
+        const errorText = await response.text();
+        let errorMessage = 'Registration failed';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorData.message || 'Registration failed';
+        } catch {
+          errorMessage = errorText || 'Registration failed';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();

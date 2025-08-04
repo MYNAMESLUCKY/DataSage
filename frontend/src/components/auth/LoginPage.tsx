@@ -30,8 +30,17 @@ export default function LoginPage({ onLogin, onSwitchToSignup }: LoginPageProps)
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Login failed');
+        const errorText = await response.text();
+        let errorMessage = 'Login failed';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.detail || errorData.message || 'Login failed';
+        } catch {
+          errorMessage = errorText || 'Login failed';
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
