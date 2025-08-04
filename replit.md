@@ -8,7 +8,7 @@ This Enterprise RAG (Retrieval-Augmented Generation) System, built with Streamli
 - Querying processed data using SARVAM API or other AI providers with web-enhanced context.
 - Monitoring processing status and viewing query history.
 - Intelligent hybrid RAG features like smart knowledge comparison, automatic knowledge base updates, and enhanced answer quality with specific, detailed responses.
-- **Separate AI Coding Assistant** - "Coding Ground" with Cursor/Lovable-like features using DeepSeek R1 and Qwen3 Coder models, user-selectable AI models with detailed descriptions, documentation access, real-time code execution, and error fixing capabilities.
+- **Separate AI Coding Assistant** - "Coding Ground" with Cursor/Lovable-like features using DeepSeek R1 and Qwen3 Coder models, user-selectable AI models with detailed descriptions, documentation access, real-time code execution, error fixing capabilities, and intelligent fallback system for API rate limits.
 
 The project aims to deliver a robust, secure, and performant RAG solution for enterprise knowledge management, featuring ultra-fast response times, advanced mathematical and physics-enhanced processing for similarity analysis, GPU-based distributed computing for complex queries, and comprehensive coding assistance capabilities.
 
@@ -54,7 +54,7 @@ The project follows a clean, organized structure with `enterprise_app.py` as the
 - **Concurrency**: ThreadPoolExecutor for parallel processing.
 - **Error Handling**: Comprehensive logging and graceful failure handling.
 - **Authentication**: JWT-based authentication with configurable expiry, role-based access control (Admin, User, Viewer), multi-level rate limiting, secure session management, PBKDF2 password hashing, brute-force protection, and Firebase-only Google Authentication synced with a local database.
-- **Coding Ground System**: Separate AI-powered coding assistant running on independent infrastructure (API on port 8001, Frontend on port 5002) with user-selectable AI models (DeepSeek R1 for advanced reasoning, Qwen3 Coder 7B/14B for efficient coding), detailed model descriptions and quick switching, documentation search integration, real-time Python execution, error fixing, code explanation, and Cursor-like features.
+- **Coding Ground System**: Separate AI-powered coding assistant running on independent infrastructure (API on port 8001, Frontend on port 5002) with user-selectable AI models (DeepSeek R1 for advanced reasoning, Qwen3 Coder 7B/14B for efficient coding), detailed model descriptions and quick switching, documentation search integration, real-time Python execution, error fixing, code explanation, Cursor-like features, and intelligent fallback responses when API rate limits are reached.
 - **Performance-Based Rate Limiting**: Advanced rate limiter uses actual API processing time and token consumption for query complexity.
 - **Dynamic Source Retrieval**: System respects user's "Max Sources" setting (1-20), scaling vector search and reranking accordingly.
 - **Ultra-Fast Response System**: Sub-second responses using ingested documents, smart content routing for pre-written responses for basic definitions, and intelligent classification for optimal processing path.
