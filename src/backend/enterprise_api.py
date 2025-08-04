@@ -278,7 +278,7 @@ async def _process_with_standard_apis(request: QueryRequest, strategy: Dict[str,
                             'processing_time': 2.1,
                             'confidence': 0.8,
                             'cost_saved': 0.05,
-                            'tokens_used': len(answer_text.split()) * 1.3
+                            'tokens_used': int(len(answer_text.split()) * 1.3)
                         }
         except Exception as e:
             logger.error(f"Direct SARVAM API call failed: {e}")

@@ -352,7 +352,7 @@ class FreeLLMManager:
             text = result['choices'][0]['message']['content']
             return {
                 'text': text,
-                'tokens_used': result.get('usage', {}).get('total_tokens', len(text.split()) * 1.3)
+                'tokens_used': result.get('usage', {}).get('total_tokens', int(len(text.split()) * 1.3))
             }
         else:
             raise Exception(f"Together AI API error: {response.status_code} - {response.text}")
@@ -396,7 +396,7 @@ class FreeLLMManager:
             text = result['choices'][0]['message']['content']
             return {
                 'text': text,
-                'tokens_used': result.get('usage', {}).get('total_tokens', len(text.split()) * 1.3)
+                'tokens_used': result.get('usage', {}).get('total_tokens', int(len(text.split()) * 1.3))
             }
         else:
             raise Exception(f"OpenRouter API error: {response.status_code} - {response.text}")
@@ -440,7 +440,7 @@ class FreeLLMManager:
             text = result.get('choices', [{}])[0].get('message', {}).get('content', '')
             return {
                 'text': text,
-                'tokens_used': result.get('usage', {}).get('total_tokens', len(text.split()) * 1.3)
+                'tokens_used': result.get('usage', {}).get('total_tokens', int(len(text.split()) * 1.3))
             }
         else:
             raise Exception(f"SARVAM API error: {response.status_code} - {response.text}")
