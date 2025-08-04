@@ -18,7 +18,7 @@ export default function LoginPage({ onLogin, onSwitchToSignup }: LoginPageProps)
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8001/api/v1/auth/login', {
+      const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -35,7 +35,7 @@ export default function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProp
     }
 
     try {
-      const response = await fetch('http://localhost:8001/api/v1/auth/register', {
+      const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

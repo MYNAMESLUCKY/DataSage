@@ -29,7 +29,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5000", "http://localhost:3000", "https://your-frontend-domain.com"],
+    allow_origins=["*"],  # Allow all origins for development in Replit
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
