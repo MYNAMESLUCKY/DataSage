@@ -20,8 +20,8 @@ class User:
     email: str
     name: str
     subscription_tier: str = "free"
-    created_at: datetime = None
-    last_login: datetime = None
+    created_at: Optional[datetime] = None
+    last_login: Optional[datetime] = None
 
 class AuthService:
     def __init__(self, db_path: str = "auth.db"):

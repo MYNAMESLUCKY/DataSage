@@ -21,8 +21,9 @@ export function useAuth() {
   });
 
   useEffect(() => {
-    // For demo purposes, simulate authentication
-    setTimeout(() => {
+    // Check for existing token on load
+    const token = localStorage.getItem('auth_token');
+    if (token) {
       setAuthState({
         user: {
           id: 'demo-user-123',
@@ -33,15 +34,38 @@ export function useAuth() {
         isLoading: false,
         isAuthenticated: true,
       });
-    }, 1000);
+    } else {
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Simulate login
-    console.log('Login:', email, password);
+    setAuthState(prev => ({ ...prev, isLoading: true }));
+    
+    try {
+      // For demo purposes, create user immediately
+      const userData = {
+        id: 'demo-user-123',
+        email: email || 'demo@example.com',
+        name: 'Demo User',
+        subscription_tier: 'free'
+      };
+      
+      localStorage.setItem('auth_token', 'demo-token');
+      
+      setAuthState({
+        user: userData,
+        isLoading: false,
+        isAuthenticated: true,
+      });
+    } catch (error) {
+      console.error('Login failed:', error);
+      setAuthState(prev => ({ ...prev, isLoading: false }));
+    }
   };
 
   const logout = () => {
+    localStorage.removeItem('auth_token');
     setAuthState({
       user: null,
       isLoading: false,
