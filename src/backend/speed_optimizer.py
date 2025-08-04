@@ -166,29 +166,65 @@ class SpeedOptimizer:
     
     def _generate_lightweight_response(self, query: str, rag_processor) -> Dict:
         """
-        Generate response using lightweight processing with real knowledge base data
+        Generate response using lightweight processing with KB + fast web search
         """
         try:
-            # Quick knowledge base search (no web search for speed)
+            # Quick knowledge base search
             kb_docs = rag_processor.vector_store.similarity_search(
                 query=query,
                 k=5  # Limit to 5 most relevant docs for speed
             )
             
-            # Generate answer using real knowledge base content
+            # Fast web search for current information
+            from src.backend.fast_tavily_service import fast_tavily_service
+            web_response = fast_tavily_service.fast_search_and_fetch(
+                query=query,
+                max_results=3,  # Limit for speed
+                search_depth="basic"
+            )
+            
+            # Combine KB and web sources
+            all_docs = kb_docs.copy()
+            web_sources = []
+            
+            if web_response.get('status') == 'success' and web_response.get('results'):
+                # Add web results as documents
+                for result in web_response['results'][:2]:  # Limit to 2 web results for speed
+                    from langchain.schema import Document
+                    web_doc = Document(
+                        page_content=f"Title: {result.get('title', '')}\n\nContent: {result.get('content', '')}",
+                        metadata={
+                            "source": result.get('url', ''),
+                            "title": result.get('title', ''),
+                            "type": "web_data",
+                            "score": result.get('score', 0.0)
+                        }
+                    )
+                    all_docs.append(web_doc)
+                    web_sources.append({
+                        "url": result.get('url', ''),
+                        "title": result.get('title', ''),
+                        "score": result.get('score', 0.0)
+                    })
+            
+            # Generate answer using combined KB + web content
             response = rag_processor.rag_engine.generate_answer(
                 query=query,
-                relevant_docs=kb_docs,
+                relevant_docs=all_docs,
                 llm_model="sarvam-m"
             )
             
-            # Add source information from knowledge base
-            sources = []
+            # Add source information
+            kb_sources = []
             for doc in kb_docs:
                 if hasattr(doc, 'metadata') and doc.metadata.get('source'):
-                    sources.append(doc.metadata['source'])
+                    kb_sources.append(doc.metadata['source'])
             
-            response['sources'] = sources[:3]  # Limit sources for speed
+            response['sources'] = kb_sources[:2]  # KB sources
+            response['web_sources'] = web_sources  # Web sources
+            response['web_cache_used'] = web_response.get('cache_type', 'none') != 'fresh_search'
+            response['web_processing_time_ms'] = web_response.get('processing_time_ms', 0)
+            
             return response
             
         except Exception as e:

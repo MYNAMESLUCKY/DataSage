@@ -78,16 +78,18 @@ class HybridRAGProcessor:
                         'status': 'success',
                         'answer': fast_response['answer'],
                         'sources': fast_response.get('sources', []),
-                        'web_sources': [],
+                        'web_sources': fast_response.get('web_sources', []),
                         'confidence': fast_response.get('confidence', 0.8),
-                        'model_used': f"{llm_model} (knowledge base optimized)",
+                        'model_used': f"{llm_model} (KB + web optimized)",
                         'processing_time': processing_time,
                         'optimization_used': True,
                         'optimization_path': fast_response['optimization_path'],
                         'fast_response_time_ms': fast_response.get('total_processing_time_ms', 0),
-                        'strategy': 'knowledge_base_optimized',
-                        'insights': f"Knowledge base optimized processing - {fast_response['optimization_path']}",
-                        'cache_type': fast_response.get('cache_type', 'knowledge_base')
+                        'web_cache_used': fast_response.get('web_cache_used', False),
+                        'web_processing_time_ms': fast_response.get('web_processing_time_ms', 0),
+                        'strategy': 'hybrid_speed_optimized',
+                        'insights': f"Hybrid speed optimization - KB + fast web search ({fast_response['optimization_path']})",
+                        'cache_type': fast_response.get('cache_type', 'hybrid')
                     }
             
             # STEP -1: Check cache first
