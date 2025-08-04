@@ -340,65 +340,66 @@ class HybridRAGProcessor:
                 # Standard processing for simple/moderate queries
                 logger.info("Standard processing for simple/moderate complexity query")
                 
-                result = self.rag_engine.generate_answer(
-                    query=query,
-                    relevant_docs=final_docs,
-                    llm_model=llm_model
-                )
-                
-                # Add complexity info
-                result['gpu_processing'] = False
-                result['complexity_analysis'] = {
-                    'score': complexity_analysis.score,
-                    'level': complexity_analysis.level.value,
-                    'gpu_recommended': False
-                }
-                
-                # Check if result indicates failure but we have documents - use KB fallback
-                if (result.get('status') == 'error' and final_docs and 
-                    'rate limit' in result.get('answer', '').lower()):
+                try:
+                    result = self.rag_engine.generate_answer(
+                        query=query,
+                        relevant_docs=final_docs,
+                        llm_model=llm_model
+                    )
                     
-                    logger.warning("API failed but we have relevant documents - using knowledge base fallback")
-                    
-                    # Force generate answer using knowledge base
-                    context = self.rag_engine._prepare_context(final_docs)
-                    fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
-                    
-                    result = {
-                        'answer': fallback_result['answer'],
-                        'confidence': fallback_result['confidence'],
-                        'status': 'success_kb_fallback',
-                        'model_used': f"{llm_model} (knowledge base fallback)",
-                        'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
-                        'fallback_reason': 'Rate limit exceeded - used knowledge base data'
+                    # Add complexity info
+                    result['gpu_processing'] = False
+                    result['complexity_analysis'] = {
+                        'score': complexity_analysis.score,
+                        'level': complexity_analysis.level.value,
+                        'gpu_recommended': False
                     }
                     
-            except Exception as e:
-                logger.error(f"Error in answer generation: {e}")
-                
-                # Emergency fallback - always provide something if we have docs
-                if final_docs:
-                    logger.info("Emergency fallback - extracting direct information from documents")
-                    context = self.rag_engine._prepare_context(final_docs)
-                    fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
+                    # Check if result indicates failure but we have documents - use KB fallback
+                    if (result.get('status') == 'error' and final_docs and 
+                        'rate limit' in result.get('answer', '').lower()):
+                        
+                        logger.warning("API failed but we have relevant documents - using knowledge base fallback")
+                        
+                        # Force generate answer using knowledge base
+                        context = self.rag_engine._prepare_context(final_docs)
+                        fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
+                        
+                        result = {
+                            'answer': fallback_result['answer'],
+                            'confidence': fallback_result['confidence'],
+                            'status': 'success_kb_fallback',
+                            'model_used': f"{llm_model} (knowledge base fallback)",
+                            'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
+                            'fallback_reason': 'Rate limit exceeded - used knowledge base data'
+                        }
+                        
+                except Exception as e:
+                    logger.error(f"Error in answer generation: {e}")
                     
-                    result = {
-                        'answer': fallback_result['answer'],
-                        'confidence': fallback_result['confidence'],
-                        'status': 'emergency_fallback',
-                        'model_used': 'Knowledge Base Direct Access',
-                        'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
-                        'fallback_reason': f'Complete API failure - emergency knowledge base access: {str(e)}'
-                    }
-                else:
-                    result = {
-                        'answer': "I encountered technical difficulties and no relevant information is available in the knowledge base for your query.",
-                        'confidence': 0.1,
-                        'status': 'no_data_error',
-                        'model_used': 'None',
-                        'sources': [],
-                        'fallback_reason': f'No documents available and API failed: {str(e)}'
-                    }
+                    # Emergency fallback - always provide something if we have docs
+                    if final_docs:
+                        logger.info("Emergency fallback - extracting direct information from documents")
+                        context = self.rag_engine._prepare_context(final_docs)
+                        fallback_result = self.rag_engine._generate_enhanced_fallback_answer(query, context)
+                        
+                        result = {
+                            'answer': fallback_result['answer'],
+                            'confidence': fallback_result['confidence'],
+                            'status': 'emergency_fallback',
+                            'model_used': 'Knowledge Base Direct Access',
+                            'sources': [doc.metadata.get('source', f'Document {i+1}') for i, doc in enumerate(final_docs[:5])],
+                            'fallback_reason': f'Complete API failure - emergency knowledge base access: {str(e)}'
+                        }
+                    else:
+                        result = {
+                            'answer': "I encountered technical difficulties and no relevant information is available in the knowledge base for your query.",
+                            'confidence': 0.1,
+                            'status': 'no_data_error',
+                            'model_used': 'None',
+                            'sources': [],
+                            'fallback_reason': f'No documents available and API failed: {str(e)}'
+                        }
             
             processing_time = time.time() - start_time
             

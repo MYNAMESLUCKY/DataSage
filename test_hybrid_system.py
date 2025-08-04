@@ -1,87 +1,104 @@
-#!/usr/bin/env python3
 """
-Test script for the intelligent hybrid RAG system
+Test the hybrid RAG system with complex questions to verify GPU integration
 """
 
 import sys
 import os
-sys.path.append('src')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Add the current directory to the path
-sys.path.insert(0, os.path.abspath('.'))
-
-try:
-    from src.backend.hybrid_rag_processor import HybridRAGProcessor
-    from src.backend.api import RAGSystemAPI
-    print("✅ Imports successful")
-except ImportError as e:
-    print(f"❌ Import error: {e}")
-    print("Trying alternative import method...")
-    try:
-        import src.backend.hybrid_rag_processor as hybrid_module
-        import src.backend.api as api_module
-        HybridRAGProcessor = hybrid_module.HybridRAGProcessor
-        RAGSystemAPI = api_module.RAGSystemAPI
-        print("✅ Alternative imports successful")
-    except Exception as e2:
-        print(f"❌ All imports failed: {e2}")
-        sys.exit(1)
-
-def test_hybrid_system():
-    """Test the hybrid RAG system with a complex query"""
+def test_complex_queries():
+    """Test queries that should trigger GPU processing"""
     
-    print("🔄 Initializing RAG System...")
-    try:
-        # Initialize the API
-        api = RAGSystemAPI()
-        print("✅ RAG System API initialized")
+    complex_queries = [
+        # Mathematical/Scientific (should trigger GPU)
+        """
+        Analyze the mathematical relationships between quantum entanglement, 
+        information theory, and computational complexity theory. How do these 
+        interdisciplinary connections impact our understanding of consciousness 
+        and the nature of reality? Provide a comprehensive framework that 
+        integrates philosophical, physical, and computational perspectives.
+        """,
         
-        # Initialize hybrid processor
-        hybrid_processor = HybridRAGProcessor(
-            api.vector_store,
-            api.rag_engine,
-            api.enhanced_retrieval
-        )
-        print("✅ Hybrid processor initialized")
+        # Multi-domain research (should trigger GPU)
+        """
+        Synthesize research across neuroscience, artificial intelligence, 
+        philosophy of mind, and quantum physics to address the hard problem 
+        of consciousness. Evaluate competing theories like Integrated Information 
+        Theory, Global Workspace Theory, and Orchestrated Objective Reduction, 
+        considering their mathematical foundations and empirical predictions.
+        """,
         
-        # Test query
-        test_query = "What are the latest developments in quantum computing for agricultural optimization?"
-        print(f"\n🧠 Testing query: {test_query}")
+        # Simple query (should NOT trigger GPU)
+        """
+        What is artificial intelligence and how does it work?
+        """,
         
-        # Process with hybrid system
-        result = hybrid_processor.process_intelligent_query(
-            query=test_query,
-            llm_model="sarvam-m",
-            use_web_search=True,
-            max_web_results=3
-        )
+        # Moderate complexity (should NOT trigger GPU)
+        """
+        Compare machine learning and deep learning approaches for natural 
+        language processing tasks.
+        """
+    ]
+    
+    print("🧪 Testing Complex Queries with GPU Integration")
+    print("=" * 60)
+    
+    for i, query in enumerate(complex_queries, 1):
+        print(f"\n{i}. Testing Query:")
+        print(f"   {query.strip()[:100]}...")
         
-        print(f"\n📊 Results:")
-        print(f"Status: {result.get('status', 'unknown')}")
-        print(f"Strategy: {result.get('strategy_used', 'unknown')}")
-        print(f"KB Documents: {result.get('kb_documents_found', 0)}")
-        print(f"Web Results: {result.get('web_results_used', 0)}")
-        print(f"KB Updated: {result.get('knowledge_base_updated', False)}")
-        print(f"Processing Time: {result.get('processing_time', 0):.2f}s")
+        # Test complexity classification
+        from src.backend.complexity_classifier import classify_query_complexity
+        analysis = classify_query_complexity(query.strip())
         
-        if result.get('status') == 'success':
-            print(f"\n💡 Answer Preview: {result.get('answer', '')[:200]}...")
-            print(f"Web Sources: {len(result.get('web_sources', []))}")
-            print(f"Insights: {result.get('insights', 'None')}")
-            print("\n✅ Test completed successfully!")
-            return True
-        else:
-            print(f"\n❌ Test failed: {result.get('message', 'Unknown error')}")
-            return False
+        print(f"\n   📊 Complexity Analysis:")
+        print(f"      Score: {analysis.score:.3f}")
+        print(f"      Level: {analysis.level.value.upper()}")
+        print(f"      GPU Recommended: {'✅ YES' if analysis.gpu_recommended else '❌ NO'}")
+        print(f"      Estimated Time: {analysis.estimated_compute_time:.1f}s")
+        
+        # Show reasoning
+        if analysis.reasoning:
+            print(f"      Reasoning: {analysis.reasoning.split('.')[0]}...")
+        
+        # GPU service recommendations for complex queries
+        if analysis.gpu_recommended:
+            from src.backend.gpu_config import get_gpu_service_recommendations
+            recommendations = get_gpu_service_recommendations(analysis.score, query.strip())
             
-    except Exception as e:
-        print(f"\n❌ Test failed with exception: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return False
+            print(f"\n   🚀 GPU Processing Info:")
+            print(f"      Query Type: {recommendations['query_type']}")
+            print(f"      Recommended Service: {recommendations['recommended_services'][0]['name']}")
+            print(f"      Compute: {recommendations['recommended_services'][0]['compute_capability']}")
+            print(f"      Memory: {recommendations['recommended_services'][0]['memory_gb']}GB")
 
 if __name__ == "__main__":
-    print("🚀 Testing Intelligent Hybrid RAG System")
+    test_complex_queries()
+    
+    print("\n\n🎯 Manual Testing Instructions:")
     print("=" * 50)
-    success = test_hybrid_system()
-    sys.exit(0 if success else 1)
+    print("1. Open the Streamlit interface")
+    print("2. Copy and paste these complex queries:")
+    print()
+    
+    print("   🔬 COMPLEX QUERY (should show GPU processing):")
+    print('   "Analyze quantum consciousness theories integrating neuroscience,')
+    print('   physics, and computational complexity theory with mathematical')
+    print('   frameworks for emergent properties in distributed systems."')
+    print()
+    
+    print("   📊 SIMPLE QUERY (should use standard processing):")
+    print('   "What is machine learning?"')
+    print()
+    
+    print("3. Look for these indicators in the response:")
+    print("   ✅ GPU processing messages in logs")
+    print("   ✅ Complexity analysis in response metadata")
+    print("   ✅ Enhanced response quality for complex queries")
+    print("   ✅ 'GPU processing' field in the response")
+    print()
+    
+    print("4. Check the workflow logs for:")
+    print("   📝 'Complex query detected' messages")
+    print("   📝 'GPU processing successful' confirmations")
+    print("   📝 Complexity scores and reasoning")
