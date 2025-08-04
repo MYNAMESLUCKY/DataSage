@@ -255,7 +255,7 @@ async def get_system_status():
     """Get system status and health metrics"""
     
     # Get GPU infrastructure status
-    gpu_status = gpu_processor.get_acceleration_status()
+    gpu_status = {"available": False, "reason": "No GPU providers configured"}
     
     # Get service availability
     models_available = len(free_llm_manager.models)
