@@ -92,12 +92,15 @@ class HybridRAGProcessor:
                 query_rewrites = {'main': [query]}
                 sub_queries = [query]
                 total_variations = 1
+                query_analysis = {'total_queries': 1, 'processing_time': 0}
+                routing_info = {'strategy': 'simple'}
             else:
                 # Complex query - limited processing for speed
                 query_analysis = self.query_processor.process_query_comprehensive(query)
                 sub_queries = query_analysis.get('sub_queries', [query])[:2]  # Limit to 2 sub-queries
                 query_rewrites = {'main': [query] + query_analysis.get('query_rewrites', {}).get('main', [])[:1]}  # Only 1 rewrite
                 total_variations = len(query_rewrites['main'])
+                routing_info = query_analysis.get('routing', {'strategy': 'hybrid'})
             
             logger.info(f"Fast query analysis: {len(sub_queries)} sub-queries, {total_variations} total variations")
             
