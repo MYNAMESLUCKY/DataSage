@@ -28,7 +28,7 @@ class RAGEngine:
         self.openai_client = None
         self.vector_store = None
         self.is_ready = False
-        self.available_models = ["sarvam-m"]  # SARVAM only
+        self.available_models = ["sarvam-m", "meta-llama/llama-3.3-70b-instruct:free"]  # SARVAM and LLaMA 3.3 70B
         self.api_provider = "Unknown"
         
     def initialize(self):
@@ -36,38 +36,64 @@ class RAGEngine:
         try:
             logger.info("Initializing RAG Engine...")
             
-            # Check available API keys with SARVAM_API as primary
+            # Check available API keys - SARVAM and LLaMA only
             sarvam_api_key = os.getenv("SARVAM_API")
-            deepseek_api_key = os.getenv("DEEPSEEK_API")
-            openrouter_api_key = os.getenv("OPENROUTER_API")
-            openai_api_key = os.getenv("OPENAI_API_KEY")
+            llama_api_key = os.getenv("LLAMA_API_KEY")
             
-            # Force SARVAM_API as primary (it's available)
+            # Initialize both clients
+            self.clients = {}
+            
+            # SARVAM API setup
             if sarvam_api_key:
-                self.openai_client = OpenAI(
+                self.clients["SARVAM"] = OpenAI(
                     api_key=sarvam_api_key,
                     base_url="https://api.sarvam.ai/v1"
                 )
-                self.api_provider = "SARVAM"
-                self.default_model = "sarvam-m"
                 logger.info("SARVAM API client initialized successfully")
                 
-                # Test the connection
+                # Test SARVAM connection
                 try:
-                    test_response = self.openai_client.chat.completions.create(
+                    test_response = self.clients["SARVAM"].chat.completions.create(
                         model="sarvam-m",
                         messages=[{"role": "user", "content": "test"}],
                         max_tokens=5
                     )
                     logger.info("SARVAM API connection verified")
                 except Exception as e:
-                    logger.warning(f"SARVAM API test failed: {e}, trying DeepSeek...")
-                    sarvam_api_key = None  # Force fallback
-            # Only allow SARVAM API - no fallbacks
-            if not sarvam_api_key:
-                raise Exception("SARVAM_API key is required. No other providers supported.")
+                    logger.warning(f"SARVAM API test failed: {e}")
             
-            logger.info("SARVAM-only configuration enforced")
+            # LLaMA API setup (using OpenRouter or compatible API)
+            if llama_api_key:
+                self.clients["LLAMA"] = OpenAI(
+                    api_key=llama_api_key,
+                    base_url="https://openrouter.ai/api/v1"
+                )
+                logger.info("LLaMA API client initialized successfully")
+                
+                # Test LLaMA connection
+                try:
+                    test_response = self.clients["LLAMA"].chat.completions.create(
+                        model="meta-llama/llama-3.3-70b-instruct:free",
+                        messages=[{"role": "user", "content": "test"}],
+                        max_tokens=5
+                    )
+                    logger.info("LLaMA API connection verified")
+                except Exception as e:
+                    logger.warning(f"LLaMA API test failed: {e}")
+            
+            # Set primary client and default model
+            if sarvam_api_key:
+                self.openai_client = self.clients["SARVAM"]
+                self.api_provider = "SARVAM"
+                self.default_model = "sarvam-m"
+            elif llama_api_key:
+                self.openai_client = self.clients["LLAMA"] 
+                self.api_provider = "LLAMA"
+                self.default_model = "meta-llama/llama-3.3-70b-instruct:free"
+            else:
+                raise Exception("Either SARVAM_API or LLAMA_API_KEY is required.")
+            
+            logger.info(f"Dual-model configuration ready: SARVAM{'✓' if sarvam_api_key else '✗'} | LLaMA{'✓' if llama_api_key else '✗'}")
             
             self.is_ready = True
             logger.info("RAG Engine initialized successfully")
@@ -147,8 +173,19 @@ class RAGEngine:
         
         def make_api_call():
             """Inner function to make the actual API call"""
-            if not self.openai_client:
-                raise Exception("No AI client available")
+            # Select the appropriate client based on model
+            if model.startswith("sarvam"):
+                if "SARVAM" not in self.clients:
+                    raise Exception("SARVAM API client not available")
+                client = self.clients["SARVAM"]
+                api_name = "SARVAM"
+            elif model.startswith("meta-llama"):
+                if "LLAMA" not in self.clients:
+                    raise Exception("LLaMA API client not available") 
+                client = self.clients["LLAMA"]
+                api_name = "LLaMA"
+            else:
+                raise Exception(f"Unsupported model: {model}")
                 
             # Prepare prompt based on model type
             if model.startswith("sarvam"):
@@ -196,16 +233,14 @@ Please provide your answer in JSON format:
                 "max_tokens": 1500
             }
             
-            # Only add response_format for models that support it
-            if not model.startswith("sarvam"):
-                request_params["response_format"] = {"type": "json_object"}
+            # Both SARVAM and LLaMA use plain text format for consistency
 
             # Make the API call
-            logger.info(f"Making SARVAM API call with model: {model}")
+            logger.info(f"Making {api_name} API call with model: {model}")
             
             try:
-                response = self.openai_client.chat.completions.create(**request_params)
-                logger.info(f"SARVAM API call completed successfully")
+                response = client.chat.completions.create(**request_params)
+                logger.info(f"{api_name} API call completed successfully")
                 
                 # Validate response structure
                 if not response or not hasattr(response, 'choices') or not response.choices:
@@ -215,33 +250,14 @@ Please provide your answer in JSON format:
                 if not content or not content.strip():
                     raise Exception("Empty response content")
                 
-                # Process response based on model type
-                if model.startswith("sarvam"):
-                    return {
-                        'answer': content.strip(),
-                        'confidence': 0.8,
-                        'status': 'success',
-                        'model_used': model,
-                        'api_provider': self.api_provider
-                    }
-                else:
-                    try:
-                        result = json.loads(content)
-                        return {
-                            'answer': result.get('answer', content),
-                            'confidence': result.get('confidence', 0.8),
-                            'status': 'success',
-                            'model_used': model,
-                            'api_provider': self.api_provider
-                        }
-                    except json.JSONDecodeError:
-                        return {
-                            'answer': content.strip(),
-                            'confidence': 0.8,
-                            'status': 'success',
-                            'model_used': model,
-                            'api_provider': self.api_provider
-                        }
+                # Both models use plain text format for consistency
+                return {
+                    'answer': content.strip(),
+                    'confidence': 0.8,
+                    'status': 'success',
+                    'model_used': model,
+                    'api_provider': api_name
+                }
                         
             except Exception as api_error:
                 logger.error(f"SARVAM API call failed: {api_error}")

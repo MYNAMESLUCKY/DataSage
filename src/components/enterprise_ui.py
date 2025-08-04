@@ -386,9 +386,9 @@ class EnterpriseUI:
             with col3:
                 selected_model = st.selectbox(
                     "AI Model",
-                    options=["sarvam-m", "deepseek-chat", "moonshotai/kimi-k2:free", "gpt-4o", "anthropic/claude-3.5-sonnet"],
+                    options=["sarvam-m", "meta-llama/llama-3.3-70b-instruct:free"],
                     index=0,
-                    help="Choose the AI model for generating answers"
+                    help="Choose between SARVAM (optimized for speed) and LLaMA 3.3 70B (advanced reasoning)"
                 )
         
         # Query execution

@@ -65,13 +65,12 @@ The project follows a clean, organized structure with `enterprise_app.py` as the
 - **Storage**: FAISS for efficient similarity search and retrieval during processing.
 
 ## AI Model Integration
-- **Primary**: SARVAM API (sarvam-m) with automatic fallback.
-- **Secondary**: DeepSeek API (deepseek-chat, deepseek-coder) for fast generation.
-- **Tertiary**: OpenRouter API with Kimi model (moonshotai/kimi-k2:free).
-- **Final Backup**: Direct OpenAI API support.
+- **Dual-Model System**: SARVAM API (sarvam-m) and LLaMA 3.3 70B (meta-llama/llama-3.3-70b-instruct:free) with user selection capability.
+- **SARVAM**: Optimized for speed and efficiency, ideal for quick queries and real-time responses.
+- **LLaMA 3.3 70B**: Advanced reasoning capabilities, perfect for complex analysis and detailed explanations.
 - **Embeddings**: ChromaDB's built-in embedding models.
-- **Prompt Engineering**: ChatPromptTemplate for structured AI interactions.
-- **Model Selection**: Configurable models including sarvam-m, deepseek-chat, deepseek-coder, moonshotai/kimi-k2:free, openai/gpt-4o, anthropic/claude-3.5-sonnet, meta-llama/llama-3.1-8b-instruct.
+- **Prompt Engineering**: Unified plain-text prompt system for consistent responses across both models.
+- **Client Management**: Intelligent client selection based on chosen model with proper fallback handling.
 
 ## Configuration Management
 Centralized configuration using dataclasses, with API keys and sensitive data loaded from environment variables.

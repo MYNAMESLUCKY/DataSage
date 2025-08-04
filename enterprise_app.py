@@ -327,7 +327,7 @@ def show_settings():
         
         # Query preferences
         st.write("**Query Settings**")
-        default_model = st.selectbox("Default AI Model", ["sarvam-m", "deepseek-chat", "gpt-4o"])
+        default_model = st.selectbox("Default AI Model", ["sarvam-m", "meta-llama/llama-3.3-70b-instruct:free"])
         max_results = st.slider("Maximum Results per Query", 5, 50, 20)
         enable_web_search = st.checkbox("Enable Web Search by Default", True)
         
