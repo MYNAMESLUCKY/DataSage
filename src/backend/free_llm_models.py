@@ -414,19 +414,19 @@ class FreeLLMManager:
         if not api_key:
             raise ValueError("SARVAM_API not found")
         
-        url = "https://api.sarvam.ai/text-generation"
+        url = "https://api.sarvam.ai/v1/chat/completions"
         headers = {
-            "API-Subscription-Key": api_key,
+            "api-subscription-key": api_key,
             "Content-Type": "application/json"
         }
         
         payload = {
-            "input": prompt,
             "model": model.model_id,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
             "max_tokens": max_tokens,
-            "temperature": temperature,
-            "top_p": 0.9,
-            "stream": False
+            "temperature": temperature
         }
         
         loop = asyncio.get_event_loop()
@@ -437,7 +437,7 @@ class FreeLLMManager:
         
         if response.status_code == 200:
             result = response.json()
-            text = result.get('text', result.get('output', ''))
+            text = result.get('choices', [{}])[0].get('message', {}).get('content', '')
             return {
                 'text': text,
                 'tokens_used': result.get('usage', {}).get('total_tokens', len(text.split()) * 1.3)
