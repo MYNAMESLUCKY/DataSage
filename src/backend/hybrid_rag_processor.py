@@ -534,6 +534,49 @@ class HybridRAGProcessor:
             insights += f"Advanced Optimization: {'Yes' if result.get('advanced_analysis', {}).get('optimization_applied') else 'No'}"
             
             logger.info(f"Intelligent hybrid query completed in {processing_time:.2f} seconds")
+        
+        # Record query metrics for analytics
+        try:
+            from src.analytics.system_monitor import system_monitor, QueryMetrics
+            import uuid
+            
+            # Calculate estimated cost (rough estimate based on model and tokens)
+            estimated_cost = 0.0
+            token_count = len(str(result.get('answer', '')).split()) * 1.3  # Rough token estimate
+            
+            if llm_model == 'sarvam-m':
+                estimated_cost = token_count * 0.00001  # Example rate
+            elif 'deepseek' in llm_model:
+                estimated_cost = token_count * 0.000005
+            elif 'openai' in llm_model:
+                estimated_cost = token_count * 0.00003
+                
+            # Calculate quality score based on result
+            quality_score = 4.0  # Default good quality
+            if result.get('status') == 'success':
+                quality_score = 4.5
+            elif result.get('status') == 'error':
+                quality_score = 2.0
+            elif 'fallback' in result.get('status', ''):
+                quality_score = 3.5
+                
+            query_metrics = QueryMetrics(
+                query_id=str(uuid.uuid4()),
+                timestamp=datetime.now(),
+                query_text=query[:200],  # Truncate long queries
+                processing_time=processing_time,
+                model_used=llm_model,
+                success=result.get('status') != 'error',
+                token_count=int(token_count),
+                cost_estimate=estimated_cost,
+                user_id=getattr(st.session_state, 'user_id', 'anonymous') if 'st' in globals() else 'anonymous',
+                response_quality_score=quality_score
+            )
+            
+            system_monitor.record_query_metrics(query_metrics)
+            
+        except Exception as analytics_error:
+            logger.warning(f"Failed to record analytics: {analytics_error}")
             
             final_result = {
                 'status': 'success',

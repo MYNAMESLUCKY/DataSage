@@ -24,6 +24,10 @@ args = "Enterprise RAG Server"
 task = "workflow.run"
 args = "API Gateway"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Analytics Dashboard"
+
 [[workflows.workflow]]
 name = "Enterprise RAG Server"
 author = "agent"
@@ -41,6 +45,15 @@ author = "agent"
 task = "shell.exec"
 args = "python api_gateway_standalone.py"
 waitForPort = 8000
+
+[[workflows.workflow]]
+name = "Analytics Dashboard"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run analytics_demo.py --server.port 5001"
+waitForPort = 5001
 
 [[ports]]
 localPort = 5000
