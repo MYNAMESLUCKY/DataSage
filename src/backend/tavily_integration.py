@@ -229,13 +229,3 @@ class TavilyIntegrationService:
     def is_available(self) -> bool:
         """Check if Tavily integration is available and ready"""
         return self.is_ready and TAVILY_AVAILABLE
-
-# Service instance
-_tavily_service = None
-
-def get_tavily_integration_service() -> TavilyIntegrationService:
-    """Get singleton instance of Tavily integration service"""
-    global _tavily_service
-    if _tavily_service is None:
-        _tavily_service = TavilyIntegrationService()
-    return _tavily_service

@@ -26,7 +26,7 @@ class AdvancedQueryProcessor:
         self.rag_engine = rag_engine
         self.client = None
         self.model = "sarvam-m"  # Default to SARVAM
-        self.executor = ThreadPoolExecutor(max_workers=2)  # Reduced for faster response
+        self.executor = ThreadPoolExecutor(max_workers=3)
         self._initialize_client()
     
     def _initialize_client(self):
@@ -54,7 +54,7 @@ class AdvancedQueryProcessor:
         except Exception as e:
             logger.error(f"Failed to initialize query processor: {e}")
     
-    def generate_query_rewrites(self, original_query: str, num_rewrites: int = 2) -> List[str]:
+    def generate_query_rewrites(self, original_query: str, num_rewrites: int = 3) -> List[str]:
         """
         Generate multiple query rewrites for improved retrieval
         Azure AI Search reports 147ms for 10 rewrites, we target 5 for balance

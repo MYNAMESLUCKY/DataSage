@@ -1,8 +1,8 @@
-modules = ["python-3.11", "nodejs-20"]
+modules = ["python-3.11"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["bash", "cargo", "glibcLocales", "libiconv", "libxcrypt", "pkg-config", "rustc", "xsimd"]
+packages = ["bash", "glibcLocales", "libxcrypt", "pkg-config", "xsimd"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -18,15 +18,20 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
+args = "Enterprise RAG Server"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
 args = "API Gateway"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Enterprise Backend"
+[[workflows.workflow]]
+name = "Enterprise RAG Server"
+author = "agent"
 
 [[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Streamlit App"
+task = "shell.exec"
+args = "streamlit run enterprise_app.py --server.port 5000"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "API Gateway"
@@ -36,28 +41,6 @@ author = "agent"
 task = "shell.exec"
 args = "python api_gateway_standalone.py"
 waitForPort = 8000
-
-[[workflows.workflow]]
-name = "Enterprise Backend"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd /home/runner/workspace && python -m src.backend.enterprise_api"
-waitForPort = 8001
-
-[[workflows.workflow]]
-name = "Streamlit App"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "streamlit run app.py --server.port 5000"
-waitForPort = 5000
-
-[[ports]]
-localPort = 3000
-externalPort = 3002
 
 [[ports]]
 localPort = 5000
@@ -70,10 +53,6 @@ externalPort = 3000
 [[ports]]
 localPort = 8000
 externalPort = 8000
-
-[[ports]]
-localPort = 8001
-externalPort = 3001
 
 [agent]
 integrations = ["flask_supabase==1.0.0"]

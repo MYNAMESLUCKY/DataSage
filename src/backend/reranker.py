@@ -25,9 +25,9 @@ class AdvancedReranker:
         self.rag_engine = rag_engine
         self.client = None
         self.model = "sarvam-m"
-        self.max_candidates = 25  # Reduced for speed
+        self.max_candidates = 50  # Standard reranking size
         self.target_results = 5   # Final results after reranking
-        self.executor = ThreadPoolExecutor(max_workers=1)  # Single worker for faster response
+        self.executor = ThreadPoolExecutor(max_workers=2)
         self._initialize_client()
     
     def _initialize_client(self):
