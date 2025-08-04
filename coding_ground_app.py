@@ -234,16 +234,43 @@ def main():
         st.header("⚙️ Configuration")
         
         # Model selection
-        st.subheader("AI Models")
+        st.subheader("🤖 AI Models")
+        
+        # Model info
+        model_info = {
+            "deepseek-r1": {
+                "name": "DeepSeek R1 🧠",
+                "description": "Advanced reasoning for complex problems",
+                "best_for": "Complex algorithms, architecture design, debugging"
+            },
+            "qwen3-coder-7b": {
+                "name": "Qwen3 Coder 7B ⚡",
+                "description": "Fast & efficient coding assistant",
+                "best_for": "Quick tasks, code completion, simple functions"
+            },
+            "qwen3-coder-14b": {
+                "name": "Qwen3 Coder 14B 🚀",
+                "description": "Advanced coding with better context",
+                "best_for": "Full applications, refactoring, optimization"
+            }
+        }
+        
         selected_model = st.selectbox(
-            "Choose coding model:",
-            [
-                "deepseek-r1",
-                "qwen3-coder-7b",
-                "qwen3-coder-14b"
-            ],
-            help="DeepSeek R1 for advanced reasoning, Qwen3 Coder for efficient coding"
+            "Choose your AI coding model:",
+            list(model_info.keys()),
+            format_func=lambda x: model_info[x]["name"],
+            help="Different models excel at different coding tasks"
         )
+        
+        # Show model details
+        model_details = model_info[selected_model]
+        st.markdown(f"""
+        <div class="feature-card">
+        <strong>{model_details['name']}</strong><br>
+        <em>{model_details['description']}</em><br><br>
+        <strong>Best for:</strong> {model_details['best_for']}
+        </div>
+        """, unsafe_allow_html=True)
         
         # Language selection
         selected_language = st.selectbox(
@@ -252,16 +279,32 @@ def main():
             index=0
         )
         
+        # Quick model switching
+        st.markdown("**Quick Switch:**")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            if st.button("🧠 R1", help="DeepSeek R1 - Advanced reasoning"):
+                selected_model = "deepseek-r1"
+                st.rerun()
+        with col2:
+            if st.button("⚡ 7B", help="Qwen3 7B - Fast coding"):
+                selected_model = "qwen3-coder-7b"
+                st.rerun()
+        with col3:
+            if st.button("🚀 14B", help="Qwen3 14B - Advanced coding"):
+                selected_model = "qwen3-coder-14b"
+                st.rerun()
+        
         # Features
         st.subheader("🚀 Features")
         st.markdown("""
         <div class="feature-card">
         <strong>Available Features:</strong><br>
+        ✓ Multiple AI Models<br>
         ✓ Code Generation<br>
         ✓ Code Explanation<br>
         ✓ Error Fixing<br>
         ✓ Documentation Search<br>
-        ✓ Open Source Resources<br>
         ✓ Real-time Execution<br>
         ✓ Chat Interface<br>
         </div>
