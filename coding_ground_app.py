@@ -316,6 +316,26 @@ def main():
             test_response = requests.get("http://localhost:8001/health", timeout=2)
             if test_response.status_code == 200:
                 st.success("✅ Coding API Online")
+                
+                # Test a quick model call to check rate limits
+                auth_response = requests.post("http://localhost:8001/auth/token?user_id=status_check&role=developer", timeout=2)
+                if auth_response.status_code == 200:
+                    token = auth_response.json()["access_token"]
+                    model_test = requests.post(
+                        "http://localhost:8001/code/generate",
+                        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+                        json={"prompt": "test", "model": "deepseek-r1", "language": "python"},
+                        timeout=5
+                    )
+                    if model_test.status_code == 200:
+                        result = model_test.json()
+                        if "rate limit" in result.get("data", {}).get("explanation", "").lower():
+                            st.warning("⚠️ API Rate Limit Reached")
+                            st.info("Using smart fallback responses. Resets daily.")
+                        else:
+                            st.success("🚀 All Models Available")
+                    else:
+                        st.info("🔄 Model Status Unknown")
             else:
                 st.error("❌ Coding API Error")
         except:
