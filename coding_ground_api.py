@@ -75,19 +75,19 @@ class APIResponse(BaseModel):
 MODELS_CONFIG = {
     "deepseek-r1": {
         "base_url": "https://api.openrouter.ai/api/v1",
-        "api_key": os.getenv("DEEPSEEK_API"),
+        "api_key": os.getenv("deepseek_r1_api"),
         "model_name": "deepseek/deepseek-r1",
         "description": "Advanced reasoning for complex coding problems"
     },
     "qwen3-coder-7b": {
         "base_url": "https://api.openrouter.ai/api/v1",
-        "api_key": os.getenv("OPENROUTER_API"),
+        "api_key": os.getenv("qwen_api"),
         "model_name": "qwen/qwen-2.5-coder-7b-instruct:free",
         "description": "Efficient coding assistant"
     },
     "qwen3-coder-14b": {
         "base_url": "https://api.openrouter.ai/api/v1", 
-        "api_key": os.getenv("OPENROUTER_API"),
+        "api_key": os.getenv("qwen_api"),
         "model_name": "qwen/qwen-2.5-coder-14b-instruct:free",
         "description": "Advanced coding assistant"
     }
