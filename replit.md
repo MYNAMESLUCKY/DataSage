@@ -1,5 +1,5 @@
 # Overview
-This Enterprise RAG (Retrieval-Augmented Generation) System, built with Streamlit, provides comprehensive knowledge access through intelligent querying via a professional web interface. It enables users to ingest data from various online sources, Wikipedia articles, and local documents, combining a local knowledge base with real-time web search. Key capabilities include:
+This Enterprise RAG (Retrieval-Augmented Generation) System, built with Streamlit, provides comprehensive knowledge access through intelligent querying via a professional web interface, plus a separate AI-powered coding assistant. It enables users to ingest data from various online sources, Wikipedia articles, and local documents, combining a local knowledge base with real-time web search. Key capabilities include:
 - Adding and configuring diverse data sources (web URLs, APIs, files).
 - Uploading and processing local documents (text, PDF, Excel, CSV, Word).
 - Ingesting Wikipedia articles at scale with smart sampling strategies.
@@ -8,8 +8,9 @@ This Enterprise RAG (Retrieval-Augmented Generation) System, built with Streamli
 - Querying processed data using SARVAM API or other AI providers with web-enhanced context.
 - Monitoring processing status and viewing query history.
 - Intelligent hybrid RAG features like smart knowledge comparison, automatic knowledge base updates, and enhanced answer quality with specific, detailed responses.
+- **Separate AI Coding Assistant** - "Coding Ground" with Cursor/Lovable-like features using DeepSeek R1 and Qwen3 Coder models, documentation access, real-time code execution, and error fixing capabilities.
 
-The project aims to deliver a robust, secure, and performant RAG solution for enterprise knowledge management, featuring ultra-fast response times, advanced mathematical and physics-enhanced processing for similarity analysis, and GPU-based distributed computing for complex queries.
+The project aims to deliver a robust, secure, and performant RAG solution for enterprise knowledge management, featuring ultra-fast response times, advanced mathematical and physics-enhanced processing for similarity analysis, GPU-based distributed computing for complex queries, and comprehensive coding assistance capabilities.
 
 # User Preferences
 Preferred communication style: Simple, everyday language.
@@ -53,6 +54,7 @@ The project follows a clean, organized structure with `enterprise_app.py` as the
 - **Concurrency**: ThreadPoolExecutor for parallel processing.
 - **Error Handling**: Comprehensive logging and graceful failure handling.
 - **Authentication**: JWT-based authentication with configurable expiry, role-based access control (Admin, User, Viewer), multi-level rate limiting, secure session management, PBKDF2 password hashing, brute-force protection, and Firebase-only Google Authentication synced with a local database.
+- **Coding Ground System**: Separate AI-powered coding assistant running on independent infrastructure (API on port 8001, Frontend on port 5002) with DeepSeek R1 and Qwen3 Coder models, documentation search integration, real-time Python execution, error fixing, code explanation, and Cursor-like features.
 - **Performance-Based Rate Limiting**: Advanced rate limiter uses actual API processing time and token consumption for query complexity.
 - **Dynamic Source Retrieval**: System respects user's "Max Sources" setting (1-20), scaling vector search and reranking accordingly.
 - **Ultra-Fast Response System**: Sub-second responses using ingested documents, smart content routing for pre-written responses for basic definitions, and intelligent classification for optimal processing path.
@@ -65,6 +67,8 @@ The project follows a clean, organized structure with `enterprise_app.py` as the
 - **Storage**: FAISS for efficient similarity search and retrieval during processing.
 
 ## AI Model Integration
+
+### RAG System Models
 - **Dual-Model System**: SARVAM API (sarvam-m) and LLaMA 3.3 70B (meta-llama/llama-3.3-70b-instruct:free) with user selection capability.
 - **SARVAM**: Optimized for speed and efficiency, ideal for quick queries and real-time responses.
 - **LLaMA 3.3 70B**: Advanced reasoning capabilities, perfect for complex analysis and detailed explanations.
@@ -72,17 +76,23 @@ The project follows a clean, organized structure with `enterprise_app.py` as the
 - **Prompt Engineering**: Unified plain-text prompt system for consistent responses across both models.
 - **Client Management**: Intelligent client selection based on chosen model with proper fallback handling.
 
+### Coding Ground Models
+- **DeepSeek R1** (`deepseek-reasoner`): Advanced reasoning for complex coding problems and sophisticated debugging.
+- **Qwen3 Coder 7B** (`qwen/qwen-2.5-coder-7b-instruct:free`): Fast, efficient coding assistance for quick development tasks.
+- **Qwen3 Coder 14B** (`qwen/qwen-2.5-coder-14b-instruct:free`): Enhanced coding capabilities for complex programming challenges.
+- **Documentation Integration**: Real-time access to programming documentation, Stack Overflow, and open-source resources.
+
 ## Configuration Management
 Centralized configuration using dataclasses, with API keys and sensitive data loaded from environment variables.
 
 # External Dependencies
 
 ## AI/ML Services
-- **SARVAM API**: Primary AI service.
-- **DeepSeek API**: Text generation.
-- **OpenRouter API**: Multi-provider AI service.
-- **OpenAI API**: Final fallback AI option.
-- **Tavily API**: Real-time web search and content retrieval.
+- **SARVAM API**: Primary AI service for RAG system.
+- **DeepSeek API**: Advanced reasoning model for Coding Ground.
+- **OpenRouter API**: Multi-provider AI service for Qwen3 Coder models.
+- **LLaMA API**: Advanced reasoning capabilities for RAG system.
+- **Tavily API**: Real-time web search and content retrieval for both systems.
 
 ## Databases
 - **PostgreSQL**: For caching web search results and processed content.

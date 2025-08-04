@@ -180,9 +180,9 @@ def main():
     user_role = UserRole(st.session_state.user_info['role'])
     
     if user_role == UserRole.ADMIN:
-        nav_options = ["🧠 RAG System", "🔰 Admin Panel", "📊 Analytics", "⚙️ Settings"]
+        nav_options = ["🧠 RAG System", "💻 Coding Ground", "🔰 Admin Panel", "📊 Analytics", "⚙️ Settings"]
     else:
-        nav_options = ["🧠 RAG System", "📊 Analytics", "⚙️ Settings"]
+        nav_options = ["🧠 RAG System", "💻 Coding Ground", "📊 Analytics", "⚙️ Settings"]
     
     with st.sidebar:
         st.markdown("---")
@@ -191,6 +191,8 @@ def main():
     # Page routing
     if selected_page == "🧠 RAG System":
         show_rag_system()
+    elif selected_page == "💻 Coding Ground":
+        show_coding_ground()
     elif selected_page == "🔰 Admin Panel" and user_role == UserRole.ADMIN:
         show_admin_panel()
     elif selected_page == "📊 Analytics":
@@ -307,6 +309,102 @@ def show_analytics():
             "Success Rate": ["99.8%", "94.4%", "100%", "99.8%"]
         }
         st.dataframe(rate_data, use_container_width=True)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+def show_coding_ground():
+    """Display Coding Ground interface - separate coding assistant"""
+    protected_page("💻 Coding Ground")
+    
+    st.markdown('<div class="enterprise-card">', unsafe_allow_html=True)
+    
+    st.subheader("🚀 AI-Powered Coding Assistant")
+    st.markdown("""
+    **Separate coding environment with Cursor/Lovable-like features**
+    
+    Features:
+    - 🤖 **DeepSeek R1** - Advanced reasoning for complex coding problems
+    - 🔧 **Qwen3 Coder** - Efficient coding assistance (7B & 14B models)
+    - 📚 **Documentation Access** - Real-time search of programming docs
+    - 🌐 **Open Source Resources** - Access to GitHub and community resources
+    - ⚡ **Code Execution** - Test your code in real-time
+    - 🔧 **Error Fixing** - Intelligent debugging assistance
+    - 💬 **Chat Interface** - Natural conversation with AI
+    """)
+    
+    # Check if Coding Ground API is running
+    try:
+        import requests
+        response = requests.get("http://localhost:8001/health", timeout=2)
+        api_status = "✅ Online" if response.status_code == 200 else "❌ Error"
+    except:
+        api_status = "⚠️ Starting..."
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.info(f"**API Status:** {api_status}")
+    
+    with col2:
+        if st.button("🚀 Launch Coding Ground", use_container_width=True):
+            # Open Coding Ground in new tab
+            st.markdown("""
+            <script>
+            window.open('http://localhost:5002', '_blank');
+            </script>
+            """, unsafe_allow_html=True)
+            st.success("Opening Coding Ground...")
+    
+    with col3:
+        if st.button("🔧 Start Backend", use_container_width=True):
+            # Show instructions to start backend
+            st.code("python coding_ground_api.py", language="bash")
+            st.info("Run this command to start the Coding Ground API")
+    
+    # Features overview
+    st.markdown("---")
+    st.subheader("🎯 Available Models & Features")
+    
+    features_col1, features_col2 = st.columns(2)
+    
+    with features_col1:
+        st.markdown("""
+        **🧠 AI Models:**
+        - **DeepSeek R1**: Advanced reasoning & complex problem solving
+        - **Qwen3 Coder 7B**: Fast, efficient coding assistance  
+        - **Qwen3 Coder 14B**: Enhanced coding capabilities
+        
+        **💻 Supported Languages:**
+        - Python, JavaScript, TypeScript
+        - Java, C++, Go, Rust
+        - HTML/CSS and more
+        """)
+    
+    with features_col2:
+        st.markdown("""
+        **🔧 Core Features:**
+        - Code generation from natural language
+        - Code explanation and documentation
+        - Error detection and fixing
+        - Real-time code execution
+        - Documentation search integration
+        
+        **🌐 Resources Access:**
+        - Official documentation (Python, MDN, etc.)
+        - Stack Overflow solutions
+        - GitHub repositories & examples
+        """)
+    
+    # Architecture info
+    st.markdown("---")
+    st.subheader("🏗️ Architecture")
+    st.markdown("""
+    **Separate Infrastructure:** Coding Ground runs independently on port 8001, ensuring no interference with your main RAG system.
+    
+    **Public Access:** Can be deployed with ngrok for external access and integration with other applications.
+    
+    **Cursor-like Features:** Intelligent code completion, error fixing, and documentation-aware assistance.
+    """)
     
     st.markdown('</div>', unsafe_allow_html=True)
 
