@@ -124,6 +124,18 @@ class FreeLLMManager:
                 rate_limit_rpm=30,
                 features=["mixture_of_experts", "high_quality", "long_context"],
                 quality_score=9.2
+            ),
+            # SARVAM API Models
+            FreeLLMModel(
+                name="SARVAM-M",
+                model_id="sarvam-m",
+                provider="sarvam",
+                max_tokens=4096,
+                context_length=8192,
+                cost_per_1k_tokens=0.001,  # Very low cost
+                rate_limit_rpm=60,
+                features=["fast_inference", "multilingual", "indian_languages"],
+                quality_score=8.6
             )
         ]
         
@@ -147,7 +159,8 @@ class FreeLLMManager:
             'huggingface': 'HUGGINGFACE_API_KEY',
             'together': 'TOGETHER_API_KEY',
             'openrouter': 'OPENROUTER_API',
-            'groq': 'GROQ_API_KEY'
+            'groq': 'GROQ_API_KEY',
+            'sarvam': 'SARVAM_API'
         }
         
         key_name = provider_keys.get(provider)
@@ -251,6 +264,8 @@ class FreeLLMManager:
             return await self._call_together(model, prompt, max_tokens, temperature)
         elif model.provider == "openrouter":
             return await self._call_openrouter(model, prompt, max_tokens, temperature)
+        elif model.provider == "sarvam":
+            return await self._call_sarvam(model, prompt, max_tokens, temperature)
         else:
             raise ValueError(f"Unsupported provider: {model.provider}")
     
@@ -385,6 +400,50 @@ class FreeLLMManager:
             }
         else:
             raise Exception(f"OpenRouter API error: {response.status_code} - {response.text}")
+            
+    async def _call_sarvam(
+        self, 
+        model: FreeLLMModel, 
+        prompt: str, 
+        max_tokens: int, 
+        temperature: float
+    ) -> Dict[str, Any]:
+        """Call SARVAM API for text generation"""
+        
+        api_key = os.getenv("SARVAM_API")
+        if not api_key:
+            raise ValueError("SARVAM_API not found")
+        
+        url = "https://api.sarvam.ai/text-generation"
+        headers = {
+            "API-Subscription-Key": api_key,
+            "Content-Type": "application/json"
+        }
+        
+        payload = {
+            "input": prompt,
+            "model": model.model_id,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": 0.9,
+            "stream": False
+        }
+        
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            self.executor,
+            lambda: requests.post(url, headers=headers, json=payload, timeout=30)
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            text = result.get('text', result.get('output', ''))
+            return {
+                'text': text,
+                'tokens_used': result.get('usage', {}).get('total_tokens', len(text.split()) * 1.3)
+            }
+        else:
+            raise Exception(f"SARVAM API error: {response.status_code} - {response.text}")
     
     def _calculate_cost_savings(self, model: FreeLLMModel, tokens_used: int) -> float:
         """Calculate cost savings compared to premium models"""

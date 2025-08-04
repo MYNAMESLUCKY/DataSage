@@ -34,7 +34,7 @@ class SerperSearchService:
     """
     
     def __init__(self):
-        self.api_key = os.getenv("SERPER_API_KEY")
+        self.api_key = os.getenv("SERPER_API_KEY") or os.getenv("TAVILY_API_KEY")
         self.base_url = "https://google.serper.dev"
         self.executor = ThreadPoolExecutor(max_workers=3)
         
