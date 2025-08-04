@@ -243,14 +243,14 @@ def main():
                 "description": "Advanced reasoning for complex problems",
                 "best_for": "Complex algorithms, architecture design, debugging"
             },
-            "qwen3-coder-7b": {
-                "name": "Qwen3 Coder 7B ⚡",
-                "description": "Fast & efficient coding assistant",
+            "qwen3-coder": {
+                "name": "Qwen3 Coder ⚡",
+                "description": "Latest fast coding assistant",
                 "best_for": "Quick tasks, code completion, simple functions"
             },
-            "qwen3-coder-14b": {
-                "name": "Qwen3 Coder 14B 🚀",
-                "description": "Advanced coding with better context",
+            "qwen-coder-32b": {
+                "name": "Qwen Coder 32B 🚀",
+                "description": "Large model for complex coding tasks",
                 "best_for": "Full applications, refactoring, optimization"
             }
         }
@@ -287,12 +287,12 @@ def main():
                 selected_model = "deepseek-r1"
                 st.rerun()
         with col2:
-            if st.button("⚡ 7B", help="Qwen3 7B - Fast coding"):
-                selected_model = "qwen3-coder-7b"
+            if st.button("⚡ Q3", help="Qwen3 Coder - Fast coding"):
+                selected_model = "qwen3-coder"
                 st.rerun()
         with col3:
-            if st.button("🚀 14B", help="Qwen3 14B - Advanced coding"):
-                selected_model = "qwen3-coder-14b"
+            if st.button("🚀 32B", help="Qwen 32B - Advanced coding"):
+                selected_model = "qwen-coder-32b"
                 st.rerun()
         
         # Features

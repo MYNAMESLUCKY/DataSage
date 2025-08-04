@@ -79,17 +79,17 @@ MODELS_CONFIG = {
         "model_name": "deepseek/deepseek-r1:free",
         "description": "Advanced reasoning for complex coding problems"
     },
-    "qwen3-coder-7b": {
+    "qwen3-coder": {
         "base_url": "https://openrouter.ai/api/v1",
         "api_key": os.getenv("qwen_api"),
-        "model_name": "qwen/qwen-2.5-coder-7b-instruct:free",
-        "description": "Efficient coding assistant"
+        "model_name": "qwen/qwen3-coder:free",
+        "description": "Latest Qwen3 coder model"
     },
-    "qwen3-coder-14b": {
+    "qwen-coder-32b": {
         "base_url": "https://openrouter.ai/api/v1", 
         "api_key": os.getenv("qwen_api"),
-        "model_name": "qwen/qwen-2.5-coder-14b-instruct:free",
-        "description": "Advanced coding assistant"
+        "model_name": "qwen/qwen-2.5-coder-32b-instruct:free",
+        "description": "Large Qwen coder model for complex tasks"
     }
 }
 
