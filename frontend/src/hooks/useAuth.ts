@@ -39,29 +39,12 @@ export function useAuth() {
     }
   }, []);
 
-  const login = async (email: string, password: string) => {
-    setAuthState(prev => ({ ...prev, isLoading: true }));
-    
-    try {
-      // For demo purposes, create user immediately
-      const userData = {
-        id: 'demo-user-123',
-        email: email || 'demo@example.com',
-        name: 'Demo User',
-        subscription_tier: 'free'
-      };
-      
-      localStorage.setItem('auth_token', 'demo-token');
-      
-      setAuthState({
-        user: userData,
-        isLoading: false,
-        isAuthenticated: true,
-      });
-    } catch (error) {
-      console.error('Login failed:', error);
-      setAuthState(prev => ({ ...prev, isLoading: false }));
-    }
+  const login = async (userData: any) => {
+    setAuthState({
+      user: userData,
+      isLoading: false,
+      isAuthenticated: true,
+    });
   };
 
   const logout = () => {

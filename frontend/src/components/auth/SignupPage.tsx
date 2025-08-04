@@ -35,17 +35,31 @@ export default function SignupPage({ onSignup, onSwitchToLogin }: SignupPageProp
     }
 
     try {
-      const response = await apiClient.post('http://localhost:8001/api/v1/auth/register', {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password
+      const response = await fetch('http://localhost:8001/api/v1/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Registration failed');
+      }
+
+      const data = await response.json();
       
-      const { user, token } = response.data;
+      const { user, token } = data;
       localStorage.setItem('auth_token', token);
       onSignup(user);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Signup failed');
+      console.error('Signup error:', err);
+      setError(err.message || 'Signup failed');
     } finally {
       setIsLoading(false);
     }

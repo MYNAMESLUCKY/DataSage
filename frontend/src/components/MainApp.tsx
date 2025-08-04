@@ -25,16 +25,16 @@ export default function MainApp() {
         name: 'Demo User',
         subscription_tier: 'free'
       };
-      login(demoUser.email, 'demo');
+      login(demoUser);
     }
   }, []);
 
   const handleLogin = (userData: any) => {
-    login(userData.email, 'demo');
+    login(userData);
   };
 
   const handleSignup = (userData: any) => {
-    login(userData.email, 'demo');
+    login(userData);
   };
 
   const handleLogout = () => {

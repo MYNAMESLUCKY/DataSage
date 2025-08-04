@@ -18,16 +18,30 @@ export default function LoginPage({ onLogin, onSwitchToSignup }: LoginPageProps)
     setError('');
 
     try {
-      const response = await apiClient.post('http://localhost:8001/api/v1/auth/login', {
-        email,
-        password
+      const response = await fetch('http://localhost:8001/api/v1/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Login failed');
+      }
+
+      const data = await response.json();
       
-      const { user, token } = response.data;
+      const { user, token } = data;
       localStorage.setItem('auth_token', token);
       onLogin(user);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Login failed');
+      console.error('Login error:', err);
+      setError(err.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
