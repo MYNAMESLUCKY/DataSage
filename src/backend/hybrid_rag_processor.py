@@ -36,6 +36,10 @@ class HybridRAGProcessor:
         self.query_processor = AdvancedQueryProcessor(rag_engine)
         self.reranker = AdvancedReranker(rag_engine)
         self.cache_manager = get_cache_manager()
+        
+        # Speed optimization settings
+        self.fast_mode = True  # Enable fast mode by default
+        self.max_processing_time = 20.0  # Target max processing time in seconds
     
     def process_intelligent_query(
         self, 
@@ -79,30 +83,44 @@ class HybridRAGProcessor:
                     cached_result['processing_time'] = time.time() - start_time
                     return cached_result
             
-            # STEP 0: Advanced Query Processing
-            logger.info("STEP 0: Processing query with advanced techniques...")
-            query_analysis = self.query_processor.process_query_comprehensive(query)
+            # STEP 0: Fast Query Processing (optimized for speed)
+            logger.info("STEP 0: Fast processing mode enabled...")
             
-            # Extract processing results
-            sub_queries = query_analysis.get('sub_queries', [query])
-            query_rewrites = query_analysis.get('query_rewrites', {'main': [query]})
-            routing_info = query_analysis.get('routing', {})
+            # Skip complex processing for simple queries to save time
+            if len(query) < 50:
+                # Simple query - use original only
+                query_rewrites = {'main': [query]}
+                sub_queries = [query]
+                total_variations = 1
+            else:
+                # Complex query - limited processing for speed
+                query_analysis = self.query_processor.process_query_comprehensive(query)
+                sub_queries = query_analysis.get('sub_queries', [query])[:2]  # Limit to 2 sub-queries
+                query_rewrites = {'main': [query] + query_analysis.get('query_rewrites', {}).get('main', [])[:1]}  # Only 1 rewrite
+                total_variations = len(query_rewrites['main'])
             
-            logger.info(f"Query analysis: {len(sub_queries)} sub-queries, {query_analysis.get('total_queries', 1)} total variations")
+            logger.info(f"Fast query analysis: {len(sub_queries)} sub-queries, {total_variations} total variations")
             
             # STEP 1: Enhanced knowledge base search with query variations
             logger.info("STEP 1: Enhanced knowledge base search with query variations...")
             
             all_kb_docs = []
-            # Search with all query variations
+            # Search with limited query variations for speed
+            search_count = 0
+            max_searches = 3  # Limit total searches for speed
             for query_set_name, queries in query_rewrites.items():
-                for variant_query in queries:
+                for variant_query in queries[:2]:  # Only use first 2 queries per set
+                    if search_count >= max_searches:
+                        break
                     kb_docs = self.enhanced_retrieval.enhanced_similarity_search(
                         self.vector_store,
                         variant_query, 
-                        k=max(8, max_results // len(query_rewrites))  # Scale with max_results
+                        k=max(6, max_results)  # Reduced from 8 for speed
                     )
                     all_kb_docs.extend(kb_docs)
+                    search_count += 1
+                if search_count >= max_searches:
+                    break
             
             # Remove duplicates while preserving order
             seen_docs = set()
@@ -113,10 +131,12 @@ class HybridRAGProcessor:
                     seen_docs.add(doc_id)
                     unique_kb_docs.append(doc)
             
-            # Rerank the combined results
+            # Fast reranking with reduced scope
             if unique_kb_docs:
-                logger.info(f"Reranking {len(unique_kb_docs)} unique knowledge base documents...")
-                reranked_kb = self.reranker.rerank_documents(query, unique_kb_docs, top_k=max_results)
+                # Limit reranking candidates for speed
+                rerank_candidates = unique_kb_docs[:20]  # Reduced from unlimited to 20
+                logger.info(f"Fast reranking {len(rerank_candidates)} documents...")
+                reranked_kb = self.reranker.rerank_documents(query, rerank_candidates, top_k=max_results)
                 kb_docs = [doc for doc, score in reranked_kb]
             else:
                 kb_docs = []
