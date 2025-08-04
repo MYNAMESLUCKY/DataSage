@@ -82,6 +82,10 @@ args = "streamlit run coding_ground_app.py --server.port 5002"
 waitForPort = 5002
 
 [[ports]]
+localPort = 3002
+externalPort = 3003
+
+[[ports]]
 localPort = 5000
 externalPort = 80
 
