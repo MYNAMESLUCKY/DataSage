@@ -84,15 +84,19 @@ class SpeedOptimizer:
         use_fast_path = self.should_use_fast_path(query)
         
         if use_fast_path:
-            # Step 2: Try fast cache first
+            # Step 2: Try fast cache first (only for very basic queries)
             fast_response = fast_cache.get_fast_response(query)
             
-            if fast_response:
+            # Only use cached responses for exact basic definitions
+            query_lower = query.lower().strip()
+            basic_definition_queries = ["what is ai", "what is machine learning", "what is deep learning"]
+            
+            if fast_response and query_lower in basic_definition_queries:
                 total_time = (time.time() - start_time) * 1000
                 fast_response['total_processing_time_ms'] = total_time
-                fast_response['optimization_path'] = 'fast_cache'
+                fast_response['optimization_path'] = 'basic_definition_cache'
                 
-                logger.info(f"Fast cache response delivered in {total_time:.1f}ms")
+                logger.info(f"Basic definition cache response delivered in {total_time:.1f}ms")
                 return fast_response
             
             # Step 3: If no cache hit, generate response and cache it
@@ -162,15 +166,31 @@ class SpeedOptimizer:
     
     def _generate_lightweight_response(self, query: str, rag_processor) -> Dict:
         """
-        Generate response using lightweight processing for simple queries
+        Generate response using lightweight processing with real knowledge base data
         """
         try:
-            # Use knowledge base only, no web search, minimal processing
-            return rag_processor.rag_engine.generate_answer(
+            # Quick knowledge base search (no web search for speed)
+            kb_docs = rag_processor.vector_store.similarity_search(
                 query=query,
-                relevant_docs=[],  # Start with empty docs for speed
+                k=5  # Limit to 5 most relevant docs for speed
+            )
+            
+            # Generate answer using real knowledge base content
+            response = rag_processor.rag_engine.generate_answer(
+                query=query,
+                relevant_docs=kb_docs,
                 llm_model="sarvam-m"
             )
+            
+            # Add source information from knowledge base
+            sources = []
+            for doc in kb_docs:
+                if hasattr(doc, 'metadata') and doc.metadata.get('source'):
+                    sources.append(doc.metadata['source'])
+            
+            response['sources'] = sources[:3]  # Limit sources for speed
+            return response
+            
         except Exception as e:
             logger.error(f"Lightweight response generation failed: {e}")
             raise

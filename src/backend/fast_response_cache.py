@@ -38,7 +38,8 @@ class FastResponseCache:
         self.max_memory_cache_size = 1000
         self.cache_ttl_hours = 24
         
-        # Pre-built responses for ultra-common queries
+        # Keep instant responses minimal - only for the most basic definitional queries
+        # Most queries should use the knowledge base for accurate, up-to-date content
         self.instant_responses = {
             "what is ai": {
                 "response": """# Artificial Intelligence (AI)

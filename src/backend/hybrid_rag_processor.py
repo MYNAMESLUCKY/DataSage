@@ -67,10 +67,10 @@ class HybridRAGProcessor:
             from src.backend.speed_optimizer import speed_optimizer
             
             if speed_optimizer.should_use_fast_path(query):
-                logger.info("Query eligible for speed optimization - checking fast cache")
+                logger.info("Query eligible for speed optimization - using knowledge base optimized processing")
                 
                 fast_response = speed_optimizer.get_optimized_response(query, self)
-                if fast_response and fast_response.get('optimization_path') in ['fast_cache', 'lightweight_processing']:
+                if fast_response and fast_response.get('optimization_path') in ['basic_definition_cache', 'lightweight_processing']:
                     processing_time = time.time() - start_time
                     
                     # Format as hybrid processor response
@@ -80,14 +80,14 @@ class HybridRAGProcessor:
                         'sources': fast_response.get('sources', []),
                         'web_sources': [],
                         'confidence': fast_response.get('confidence', 0.8),
-                        'model_used': f"{llm_model} (speed optimized)",
+                        'model_used': f"{llm_model} (knowledge base optimized)",
                         'processing_time': processing_time,
                         'optimization_used': True,
                         'optimization_path': fast_response['optimization_path'],
                         'fast_response_time_ms': fast_response.get('total_processing_time_ms', 0),
-                        'strategy': 'speed_optimized',
-                        'insights': f"Speed optimized processing - {fast_response['optimization_path']}",
-                        'cache_type': fast_response.get('cache_type', 'none')
+                        'strategy': 'knowledge_base_optimized',
+                        'insights': f"Knowledge base optimized processing - {fast_response['optimization_path']}",
+                        'cache_type': fast_response.get('cache_type', 'knowledge_base')
                     }
             
             # STEP -1: Check cache first
