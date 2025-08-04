@@ -74,19 +74,19 @@ class APIResponse(BaseModel):
 # AI Model Configuration
 MODELS_CONFIG = {
     "deepseek-r1": {
-        "base_url": "https://api.openrouter.ai/api/v1",
+        "base_url": "https://openrouter.ai/api/v1",
         "api_key": os.getenv("deepseek_r1_api"),
-        "model_name": "deepseek/deepseek-r1",
+        "model_name": "deepseek/deepseek-r1:free",
         "description": "Advanced reasoning for complex coding problems"
     },
     "qwen3-coder-7b": {
-        "base_url": "https://api.openrouter.ai/api/v1",
+        "base_url": "https://openrouter.ai/api/v1",
         "api_key": os.getenv("qwen_api"),
         "model_name": "qwen/qwen-2.5-coder-7b-instruct:free",
         "description": "Efficient coding assistant"
     },
     "qwen3-coder-14b": {
-        "base_url": "https://api.openrouter.ai/api/v1", 
+        "base_url": "https://openrouter.ai/api/v1", 
         "api_key": os.getenv("qwen_api"),
         "model_name": "qwen/qwen-2.5-coder-14b-instruct:free",
         "description": "Advanced coding assistant"
@@ -202,7 +202,9 @@ class CodingAIEngine:
         
         headers = {
             "Authorization": f"Bearer {config['api_key']}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "HTTP-Referer": "http://localhost:5002",
+            "X-Title": "Coding Ground AI Assistant"
         }
         
         payload = {
