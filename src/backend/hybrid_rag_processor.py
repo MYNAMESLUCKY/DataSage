@@ -41,6 +41,12 @@ class HybridRAGProcessor:
         
         # GPU processing for complex queries
         self.gpu_processor = gpu_processor
+        
+        # Advanced mathematical and physics-enhanced processing
+        from src.backend.advanced_mathematics import advanced_math_processor
+        from src.backend.physics_enhanced_search import physics_search
+        self.advanced_math = advanced_math_processor
+        self.physics_search = physics_search
     
     def process_intelligent_query(
         self, 
@@ -151,11 +157,60 @@ class HybridRAGProcessor:
                     seen_docs.add(doc_id)
                     unique_kb_docs.append(doc)
             
-            # Rerank the combined results
+            # Advanced physics-enhanced reranking
             if unique_kb_docs:
-                logger.info(f"Reranking {len(unique_kb_docs)} unique knowledge base documents...")
+                logger.info(f"Applying advanced mathematical and physics-enhanced reranking to {len(unique_kb_docs)} documents...")
+                
+                # Standard reranking first
                 reranked_kb = self.reranker.rerank_documents(query, unique_kb_docs, top_k=max_results)
-                kb_docs = [doc for doc, score in reranked_kb]
+                
+                # Extract embeddings for advanced processing
+                doc_embeddings = []
+                doc_texts = []
+                for doc in unique_kb_docs:
+                    # Create embeddings if not available (simplified)
+                    doc_text = getattr(doc, 'page_content', str(doc))
+                    doc_texts.append(doc_text)
+                    
+                    # Simple embedding from text (in production, use proper embedding model)
+                    char_values = [ord(c) for c in doc_text.lower()[:100] if c.isalnum()]
+                    while len(char_values) < 100:
+                        char_values.append(0)
+                    doc_embeddings.append(np.array(char_values[:100]))
+                
+                if doc_embeddings:
+                    # Physics-enhanced ranking
+                    query_chars = [ord(c) for c in query.lower()[:100] if c.isalnum()]
+                    while len(query_chars) < 100:
+                        query_chars.append(0)
+                    query_embedding = np.array(query_chars[:100])
+                    
+                    # Apply multiple physics-based ranking algorithms
+                    gravitational_ranking = self.physics_search.gravitational_ranking(
+                        [{"embedding": emb} for emb in doc_embeddings], query_embedding
+                    )
+                    
+                    wave_interference_scores = self.physics_search.wave_interference_ranking(
+                        query_embedding, doc_embeddings
+                    )
+                    
+                    # Combine standard + physics-based scores
+                    enhanced_scores = []
+                    for i, (doc, standard_score) in enumerate(reranked_kb):
+                        if i < len(wave_interference_scores):
+                            physics_score = wave_interference_scores[i]
+                            combined_score = 0.7 * standard_score + 0.3 * physics_score
+                            enhanced_scores.append((doc, combined_score))
+                        else:
+                            enhanced_scores.append((doc, standard_score))
+                    
+                    # Re-sort by enhanced scores
+                    enhanced_scores.sort(key=lambda x: x[1], reverse=True)
+                    kb_docs = [doc for doc, score in enhanced_scores]
+                    
+                    logger.info("Applied physics-enhanced ranking with gravitational and wave interference algorithms")
+                else:
+                    kb_docs = [doc for doc, score in reranked_kb]
             else:
                 kb_docs = []
             
@@ -432,11 +487,40 @@ class HybridRAGProcessor:
             
             processing_time = time.time() - start_time
             
+            # Add advanced mathematical analysis to results
+            if final_docs:
+                try:
+                    # Advanced mathematical analysis
+                    doc_texts = [getattr(doc, 'page_content', str(doc)) for doc in final_docs[:5]]
+                    
+                    # Harmonic analysis
+                    harmonic_analysis = self.advanced_math.harmonic_analysis(doc_texts)
+                    
+                    # Thermodynamic information theory
+                    thermo_analysis = self.physics_search.thermodynamic_information_theory(doc_texts)
+                    
+                    # Add to result metadata
+                    result['advanced_analysis'] = {
+                        'harmonic_resonance_frequency': harmonic_analysis.resonance_frequency,
+                        'information_entropy': harmonic_analysis.entropy_measure,
+                        'phase_coherence': harmonic_analysis.phase_coherence,
+                        'thermodynamic_temperature': thermo_analysis.get('temperature', 0.0),
+                        'information_density': thermo_analysis.get('information_density', 0.0),
+                        'physics_enhanced': True
+                    }
+                    
+                    logger.info("Applied advanced mathematical and thermodynamic analysis to results")
+                    
+                except Exception as e:
+                    logger.warning(f"Advanced analysis failed: {e}")
+                    result['advanced_analysis'] = {'physics_enhanced': False, 'error': str(e)}
+            
             # Generate insights
             insights = f"Strategy: {strategy_used} | "
             insights += f"KB docs: {len(kb_docs)} | "
             insights += f"Web results: {len(web_docs)} | "
-            insights += f"KB updated: {'Yes' if should_update_kb else 'No'}"
+            insights += f"KB updated: {'Yes' if should_update_kb else 'No'} | "
+            insights += f"Physics Enhanced: {'Yes' if result.get('advanced_analysis', {}).get('physics_enhanced') else 'No'}"
             
             logger.info(f"Intelligent hybrid query completed in {processing_time:.2f} seconds")
             
