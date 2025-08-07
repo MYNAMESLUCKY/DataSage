@@ -107,7 +107,6 @@ class HybridRAGProcessor:
                 'max_results': max_results,
                 'llm_model': llm_model
             }
-            
             cached_result = self.cache_manager.get_cached_query_result(query, cache_key_params)
             if cached_result:
                 # Skip cached errors - force fresh processing for better accuracy
