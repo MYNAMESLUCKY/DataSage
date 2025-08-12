@@ -36,6 +36,7 @@ class AdvancedQueryProcessor:
             if self.rag_engine and hasattr(self.rag_engine, 'openai_client'):
                 self.client = self.rag_engine.openai_client
                 self.model = getattr(self.rag_engine, 'default_model', 'sarvam-m')
+            
                 logger.info(f"Using RAG engine client with model: {self.model}")
                 return
             
@@ -43,6 +44,7 @@ class AdvancedQueryProcessor:
             sarvam_api_key = os.getenv("SARVAM_API")
             if not sarvam_api_key:
                 raise Exception("SARVAM_API key required for query processing")
+            self.model = getattr(self)
             
             self.client = OpenAI(
                 api_key=sarvam_api_key,

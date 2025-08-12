@@ -6,6 +6,10 @@ Redirects to enterprise_app.py for proper authentication flow
 import streamlit as st
 import os
 import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add src to path
 sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))

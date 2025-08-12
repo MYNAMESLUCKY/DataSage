@@ -61,10 +61,12 @@ class TavilyIntegrationService:
         max_results: int = 10,
         search_depth: str = "advanced",
         include_domains: Optional[List[str]] = None,
-        exclude_domains: Optional[List[str]] = None
+        exclude_domains: Optional[List[str]] = None,
+        cached_fallback: Optional[List[TavilySearchResult]] = None
     ) -> List[TavilySearchResult]:
         """
         Search the web using Tavily and fetch clean content
+        Falls back to cached content if Tavily fails
         
         Args:
             query: Search query
@@ -72,24 +74,31 @@ class TavilyIntegrationService:
             search_depth: Search depth ('basic' or 'advanced')
             include_domains: List of domains to include
             exclude_domains: List of domains to exclude
+            cached_fallback: Cached content to return if Tavily search fails
             
         Returns:
             List of TavilySearchResult objects
         """
         if not self.is_ready:
             logger.error("Tavily client not ready")
-            return []
+            return cached_fallback or []
         
         try:
             logger.info(f"Searching Tavily for: '{query}' with {max_results} results")
             
-            # Prepare search parameters
+            # Prepare search parameters with optimizations for fresh results
             search_params = {
                 "query": query,
                 "search_depth": search_depth,
                 "max_results": max_results,
                 "include_answer": True,
-                "include_raw_content": True
+                "include_raw_content": True,
+                "search_on": "google,bing",  # Use multiple search engines
+                "api_feature_flags": {
+                    "use_cache": False,  # Disable caching for fresh results
+                    "prefer_recent": True  # Prioritize recent content
+                },
+                "sort_by": "relevance_and_recency"  # Balance between relevance and freshness
             }
             
             if include_domains:
@@ -129,6 +138,9 @@ class TavilyIntegrationService:
             
         except Exception as e:
             logger.error(f"Tavily search failed: {e}")
+            if cached_fallback:
+                logger.info("Returning cached fallback content due to Tavily failure.")
+                return cached_fallback
             return []
     
     def _clean_web_content(self, content: str) -> str:

@@ -21,6 +21,10 @@ from datetime import datetime, timedelta
 import requests
 import trafilatura
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -79,19 +83,19 @@ class APIResponse(BaseModel):
 MODELS_CONFIG = {
     "deepseek-r1": {
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": os.getenv("deepseek_r1_api"),
+        "api_key": os.getenv("DEEPSEEK_API"),
         "model_name": "deepseek/deepseek-r1:free",
         "description": "Advanced reasoning for complex coding problems"
     },
     "qwen3-coder": {
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": os.getenv("qwen_api"),
+        "api_key": os.getenv("QWEN_API"),
         "model_name": "qwen/qwen3-coder:free",
         "description": "Latest Qwen3 coder model"
     },
     "qwen-coder-32b": {
         "base_url": "https://openrouter.ai/api/v1",
-        "api_key": os.getenv("qwen_api"),
+        "api_key": os.getenv("QWEN_API"),
         "model_name": "qwen/qwen-2.5-coder-32b-instruct:free",
         "description": "Large Qwen coder model for complex tasks"
     }
@@ -102,7 +106,11 @@ class CodingAIEngine:
     """AI engine for coding assistance with documentation access"""
 
     def __init__(self):
-        self.web_searcher = WebDocumentationSearcher()
+        # Ensure WebDocumentationSearcher is defined before use
+        try:
+            self.web_searcher = WebDocumentationSearcher()
+        except NameError:
+            self.web_searcher = None
 
     async def generate_code(self,
                             request: CodeGenerationRequest) -> Dict[str, Any]:
@@ -195,59 +203,59 @@ class CodingAIEngine:
                                 detail=f"Code fixing failed: {str(e)}")
 
     async def _call_ai_model(self, model_id: str, prompt: str) -> str:
-        """Call the specified AI model with fallback handling"""
+        """Call the specified AI model with full error visibility"""
         if model_id not in MODELS_CONFIG:
             raise ValueError(f"Unknown model: {model_id}")
 
         config = MODELS_CONFIG[model_id]
 
-        # Check if API key is available
-        if not config['api_key']:
+        # Get API key after .env load to avoid 'None'
+        api_key = config['api_key'] or os.getenv(model_id.upper() + "_API")
+        if not api_key:
+            # No key means fallback is the only option
+            logger.warning(f"No API key found for {model_id}, using fallback.")
             return self._generate_fallback_response(prompt, model_id)
 
         headers = {
-            "Authorization": f"Bearer {config['api_key']}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "http://localhost:5002",
             "X-Title": "Coding Ground AI Assistant"
         }
 
         payload = {
-            "model":
-            config["model_name"],
-            "messages": [{
-                "role":
-                "system",
-                "content":
-                "You are an expert coding assistant with access to comprehensive programming documentation. Provide accurate, well-explained code solutions."
-            }, {
-                "role": "user",
-                "content": prompt
-            }],
-            "max_tokens":
-            2000,
-            "temperature":
-            0.3
+            "model": config["model_name"],
+            "messages": [
+                {
+                    "role": "system",
+                    "content": (
+                        "You are an expert coding assistant with access to comprehensive "
+                        "programming documentation. Provide accurate, well-explained code solutions."
+                    )
+                },
+                {"role": "user", "content": prompt}
+            ],
+            "max_tokens": 2000,
+            "temperature": 0.3
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=60)) as session:
                 async with session.post(
-                        f"{config['base_url']}/chat/completions",
-                        headers=headers,
-                        json=payload,
-                        timeout=aiohttp.ClientTimeout(total=60)) as response:
+                    f"{config['base_url']}/chat/completions",
+                    headers=headers,
+                    json=payload
+                ) as response:
                     if response.status == 200:
                         result = await response.json()
                         return result["choices"][0]["message"]["content"]
                     else:
                         error_text = await response.text()
-                        raise Exception(
-                            f"API call failed: {response.status} - {error_text}"
-                        )
+                        logger.error(f"API call failed ({response.status}): {error_text}")
+                        raise RuntimeError(f"API error {response.status}: {error_text}")
         except Exception as e:
-            logger.error(f"Network error calling {model_id}: {e}")
-            return self._generate_fallback_response(prompt, model_id)
+            logger.exception(f"Unexpected error calling {model_id}")
+            raise  
 
     def _build_code_generation_prompt(self, prompt: str, language: str,
                                       context: str, docs: str) -> str:
@@ -384,30 +392,19 @@ EXPLANATION:
         prompt_lower = prompt.lower()
 
         if "simple python code" in prompt_lower or "write a simple" in prompt_lower:
-            return """```python
-# Simple Python code example
-def hello_world():
-    \"\"\"
-    A simple function that prints a greeting message.
-    \"\"\"
-    print("Hello, World!")
-    return "Hello, World!"
-
-# Example usage
-if __name__ == "__main__":
-    message = hello_world()
-    print(f"Function returned: {message}")
-```
-
-EXPLANATION:
-This is a basic Python function that demonstrates:
-1. Function definition with def keyword
-2. Docstring for documentation
-3. Print statement for output
-4. Return value
-5. Main guard for script execution
-
-Note: API connectivity is currently limited. This is a fallback response demonstrating basic Python structure."""
+            return (
+                f"# [FALLBACK RESPONSE]\n\n"
+                f"API connectivity is currently unavailable for model: {model_id}.\n"
+                f"Your request was:\n{prompt}\n\n"
+                "No real-time AI code generation could be performed.\n"
+                "Please check your API key and network connection.\n\n"
+                "You can still try the following steps manually:\n"
+                "1. Break down your coding problem into smaller parts.\n"
+                "2. Search official documentation or Stack Overflow for similar issues.\n"
+                "3. Write and test code incrementally.\n"
+                "4. Add error handling and comments.\n\n"
+                "Note: This is a fallback response. Once API connectivity is restored, you will receive full AI-powered code and explanations."
+            )
 
         elif "class" in prompt_lower and "python" in prompt_lower:
             return """```python

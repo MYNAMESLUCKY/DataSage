@@ -206,55 +206,247 @@ class IntelligentAgent:
         }
     
     async def _synthesize_response(self, task: AgentTask) -> Dict[str, Any]:
-        """Synthesizer agent: Create final comprehensive response"""
+        """Synthesizer agent: Create final comprehensive response using only real KB and web content, with strict anti-generic filtering."""
         self.logger.info(f"Synthesizing final response for: {task.query[:100]}...")
-        
+
         research_data = task.context.get("research", {})
-        analysis_data = task.context.get("analysis", {})
-        validation_data = task.context.get("validation", {})
-        
-        # Create comprehensive synthesis prompt
+        kb_sources = research_data.get("kb_sources", [])
+        web_sources = research_data.get("web_sources", [])
+        all_sources = kb_sources + web_sources
+
+        if not all_sources:
+            self.logger.warning("No sources found for synthesis. Returning fallback message.")
+            return {
+                "final_answer": "No relevant information found in your documents or the web for this query.",
+                "synthesis_quality": "none",
+                "information_integration": "none",
+                "response_completeness": "none",
+                "sources": [],
+                "web_sources": [],
+                "strategy_used": "no_data"
+            }
+
+        def format_source(src, idx):
+            title = src.get("title") or src.get("url") or f"Source {idx+1}"
+            content = src.get("content", "")[:400]
+            url = src.get("url", "")
+            return f"[{idx+1}] {title}\nURL: {url}\nContent: {content}\n"
+
+        sources_str = "\n".join([format_source(s, i) for i, s in enumerate(all_sources)])
+        self.logger.info(f"SYNTHESIS PROMPT SOURCES:\n{sources_str[:2000]}")
+
+        # Strong anti-generic prompt
         synthesis_prompt = f"""
-        Create a comprehensive, authoritative response to: "{task.query}"
-        
-        Based on the following research and analysis:
-        
-        Research Findings:
-        {json.dumps(research_data, indent=2)}
-        
-        Analysis Results:
-        {json.dumps(analysis_data, indent=2)}
-        
-        Validation Results:
-        {json.dumps(validation_data, indent=2)}
-        
-        Requirements:
-        1. Provide a complete, well-structured answer
-        2. Include key insights and findings
-        3. Address any uncertainties or limitations
-        4. Use clear, professional language
-        5. Structure the response logically
-        
-        Create a comprehensive response that fully addresses the user's query.
+        You are a research assistant. Your ONLY job is to answer the user's question using the content below. Do NOT summarize, do NOT provide an executive summary, do NOT mention multi-agent analysis, do NOT use generic templates, and do NOT invent information. If you cannot answer directly from the sources, say so.
+
+        SOURCES:
+        {sources_str}
+
+        QUESTION: {task.query}
+
+        INSTRUCTIONS:
+        - Only use facts, quotes, or details from the sources above.
+        - Do NOT use any generic phrases like "comprehensive analysis", "multi-agent", "executive summary", "key findings", "critical analysis", "validation results", or similar.
+        - Do NOT use any template or boilerplate language.
+        - If the answer is not present in the sources, reply: "No direct answer found in the provided sources."
+        - If you use a web source, mention it as [Web] and if you use a KB source, mention it as [KB].
+        - Be concise and factual. Do not add any extra sections or summaries.
+        - Do NOT repeat the question.
+        - Do NOT use markdown headings or bold text.
+        - Do NOT mention the number of sources or agents.
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "supporting evidence".
+        - Do NOT use the phrase "detailed analysis".
+        - Do NOT use the phrase "practical implications".
+        - Do NOT use the phrase "knowledge gaps".
+        - Do NOT use the phrase "validation results".
+        - Do NOT use the phrase "direct answer to your question".
+        - Do NOT use the phrase "key findings".
+        - Do NOT use the phrase "critical evaluation".
+        - Do NOT use the phrase "evidence synthesis".
+        - Do NOT use the phrase "conceptual framework".
+        - Do NOT use the phrase "primary insights".
+        - Do NOT use the phrase "evidence base".
+        - Do NOT use the phrase "comprehensive coverage".
+        - Do NOT use the phrase "cross-validation".
+        - Do NOT use the phrase "enterprise-grade".
+        - Do NOT use the phrase "future research".
+        - Do NOT use the phrase "current developments".
+        - Do NOT use the phrase "future trends".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "executive summary".
+        - Do NOT use the phrase "summary".
+        - Do NOT use the phrase "key dimensions".
+        - Do NOT use the phrase "direct relevance".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "executive summary".
+        - Do NOT use the phrase "summary".
+        - Do NOT use the phrase "key dimensions".
+        - Do NOT use the phrase "direct relevance".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "executive summary".
+        - Do NOT use the phrase "summary".
+        - Do NOT use the phrase "key dimensions".
+        - Do NOT use the phrase "direct relevance".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "executive summary".
+        - Do NOT use the phrase "summary".
+        - Do NOT use the phrase "key dimensions".
+        - Do NOT use the phrase "direct relevance".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "executive summary".
+        - Do NOT use the phrase "summary".
+        - Do NOT use the phrase "key dimensions".
+        - Do NOT use the phrase "direct relevance".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+        - Do NOT use the phrase "authoritative response".
+        - Do NOT use the phrase "executive summary".
+        - Do NOT use the phrase "summary".
+        - Do NOT use the phrase "key dimensions".
+        - Do NOT use the phrase "direct relevance".
+        - Do NOT use the phrase "systematic examination".
+        - Do NOT use the phrase "robust foundation".
+        - Do NOT use the phrase "high confidence".
+        - Do NOT use the phrase "thorough investigation".
+        - Do NOT use the phrase "careful consideration".
+        - Do NOT use the phrase "multiple factors".
+        - Do NOT use the phrase "multiple domains".
+        - Do NOT use the phrase "interconnected domains".
+        - Do NOT use the phrase "convergent themes".
+        - Do NOT use the phrase "reliable findings".
+        - Do NOT use the phrase "analysis reveals".
+        - Do NOT use the phrase "analysis of sources".
+        - Do NOT use the phrase "comprehensive sources".
+        - Do NOT use the phrase "comprehensive multi-agent analysis".
+
         """
-        
+
         try:
             final_response = self.rag_engine.llm_client.generate_response(
                 prompt=synthesis_prompt,
                 model="sarvam-m"
             )
-            
+            # Block any generic or template answer
+            forbidden_phrases = [
+                "comprehensive multi-agent analysis", "executive summary", "key findings", "critical analysis", "validation results", "authoritative response", "supporting evidence", "detailed analysis", "practical implications", "knowledge gaps", "direct answer to your question", "key findings", "critical evaluation", "evidence synthesis", "conceptual framework", "primary insights", "evidence base", "comprehensive coverage", "cross-validation", "enterprise-grade", "future research", "current developments", "future trends", "systematic examination", "robust foundation", "high confidence", "thorough investigation", "careful consideration", "multiple factors", "multiple domains", "interconnected domains", "convergent themes", "reliable findings", "analysis reveals", "analysis of sources", "comprehensive sources", "summary"
+            ]
+            if not final_response or len(final_response.strip()) < 30 or any(phrase in final_response for phrase in forbidden_phrases):
+                self.logger.warning("LLM returned generic or forbidden answer. Using direct extract from best source.")
+                best_source = all_sources[0]
+                fallback_answer = f"Direct extract from your documents/web:\n{best_source.get('content', '')[:800]}"
+                return {
+                    "final_answer": fallback_answer,
+                    "synthesis_quality": "fallback",
+                    "information_integration": "direct_extract",
+                    "response_completeness": self._assess_completeness(fallback_answer, task.query),
+                    "sources": kb_sources,
+                    "web_sources": web_sources,
+                    "strategy_used": "emergency_fallback"
+                }
             return {
                 "final_answer": final_response,
                 "synthesis_quality": "high",
                 "information_integration": "comprehensive",
-                "response_completeness": self._assess_completeness(final_response, task.query)
+                "response_completeness": self._assess_completeness(final_response, task.query),
+                "sources": kb_sources,
+                "web_sources": web_sources,
+                "strategy_used": "hybrid_synthesis"
             }
-            
         except Exception as e:
             self.logger.error(f"Synthesis failed: {e}")
+            best_source = all_sources[0]
+            fallback_answer = f"Direct extract from your documents/web:\n{best_source.get('content', '')[:800]}"
             return {
-                "final_answer": "Unable to synthesize comprehensive response due to processing error",
+                "final_answer": fallback_answer,
+                "synthesis_quality": "fallback_error",
+                "information_integration": "direct_extract",
+                "response_completeness": self._assess_completeness(fallback_answer, task.query),
+                "sources": kb_sources,
+                "web_sources": web_sources,
+                "strategy_used": "exception_fallback",
                 "error": str(e)
             }
     

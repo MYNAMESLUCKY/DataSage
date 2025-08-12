@@ -31,9 +31,9 @@ try:
     from backend.api import RAGSystemAPI
     from backend.hybrid_rag_processor import HybridRAGProcessor
     from utils.utils import setup_logging
-except ImportError:
-    # Fallback for development
+except ImportError as e:
     import logging
+    print(f"ImportError in gateway.py: {e}")
     def setup_logging(name):
         return logging.getLogger(name)
 

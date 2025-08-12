@@ -5,6 +5,7 @@ Analytics Dashboard - Advanced metrics and insights for enterprise RAG system
 import logging
 import time
 import json
+import os
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
@@ -14,6 +15,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +55,30 @@ class AnalyticsDashboard:
         self._init_database()
     
     def _init_database(self):
-        """Initialize analytics database"""
+        """Initialize analytics database with proper validation and error handling"""
+        # Handle in-memory database using URI
+        if self.db_path == ":memory:":
+            self.uri = True
+            self.db_path = "file:memdb1?mode=memory&cache=shared"
+        elif self.db_path.startswith("file:") and "mode=memory" in self.db_path:
+            self.uri = True
+        else:
+            self.uri = False
+            if not self.db_path.endswith('.db'):
+                raise ValueError(f"Invalid database path: {self.db_path}. Must end with .db")
+            # Ensure directory exists for file-based databases
+            db_dir = os.path.dirname(os.path.abspath(self.db_path))
+            if not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+                self.logger.info(f"Created directory for database: {db_dir}")
+
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                
-                # Create analytics table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS query_analytics (
+            self.logger.info(f"Initializing analytics database at {self.db_path}")
+            
+            # Define table schemas with indices for better performance
+            SCHEMAS = {
+                'query_analytics': """
+                    CREATE TABLE query_analytics (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         query_id TEXT UNIQUE,
                         timestamp DATETIME,
@@ -73,39 +91,229 @@ class AnalyticsDashboard:
                         success BOOLEAN,
                         complexity TEXT,
                         processing_strategy TEXT,
-                        metadata TEXT
-                    )
-                """)
-                
-                # Create user analytics table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS user_analytics (
+                        metadata TEXT,
+                        CONSTRAINT query_id_unique UNIQUE (query_id)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_query_timestamp ON query_analytics(timestamp);
+                    CREATE INDEX IF NOT EXISTS idx_query_user ON query_analytics(user_id);
+                """,
+                'user_analytics': """
+                    CREATE TABLE user_analytics (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         user_id TEXT,
                         session_id TEXT,
                         timestamp DATETIME,
                         action_type TEXT,
                         action_data TEXT
-                    )
-                """)
-                
-                # Create system metrics table
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS system_metrics (
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_user_timestamp ON user_analytics(timestamp);
+                    CREATE INDEX IF NOT EXISTS idx_user_session ON user_analytics(session_id);
+                """,
+                'system_metrics': """
+                    CREATE TABLE system_metrics (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         timestamp DATETIME,
                         metric_name TEXT,
                         metric_value REAL,
                         metadata TEXT
-                    )
-                """)
+                    );
+                    CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON system_metrics(timestamp);
+                    CREATE INDEX IF NOT EXISTS idx_metrics_name ON system_metrics(metric_name);
+                """
+            }
+
+            with sqlite3.connect(self.db_path, uri=self.uri) as conn:
+                cursor = conn.cursor()
                 
+                # Enable foreign key support and optimize performance
+                cursor.execute("PRAGMA foreign_keys = ON")
+                cursor.execute("PRAGMA journal_mode = WAL")
+                cursor.execute("PRAGMA synchronous = NORMAL")
+                
+                # Get existing tables
+                cursor.execute("""
+                    SELECT name FROM sqlite_master 
+                    WHERE type='table' AND name IN ('query_analytics', 'user_analytics', 'system_metrics')
+                """)
+                existing_tables = {row[0] for row in cursor.fetchall()}
+                
+                # Create missing tables with their indices
+                for table_name, schema in SCHEMAS.items():
+                    if table_name not in existing_tables:
+                        self.logger.info(f"Creating table: {table_name}")
+                        for statement in schema.split(';'):
+                            if statement.strip():
+                                cursor.execute(statement)
+                        
                 conn.commit()
-                self.logger.info("Analytics database initialized successfully")
+                self.logger.info(f"Successfully initialized/verified all tables: {', '.join(SCHEMAS.keys())}")
+
+                # Verify database integrity
+                cursor.execute("PRAGMA integrity_check")
+                integrity_result = cursor.fetchone()[0]
+                if integrity_result != "ok":
+                    raise sqlite3.DatabaseError(f"Database integrity check failed: {integrity_result}")
+                
+        except sqlite3.Error as e:
+            error_msg = f"SQLite error during database initialization: {str(e)}"
+            self.logger.error(error_msg)
+            raise sqlite3.Error(error_msg)
+        except Exception as e:
+            error_msg = f"Unexpected error during database initialization: {str(e)}"
+            self.logger.error(error_msg)
+            raise RuntimeError(error_msg)
+    
+    def _verify_database_health(self) -> Dict[str, Any]:
+        """
+        Verify database health and return status information
+        Returns dict with health metrics
+        """
+        health_info = {
+            "status": "healthy",
+            "last_checked": datetime.now().isoformat(),
+            "tables": {},
+            "integrity": None,
+            "errors": []
+        }
+        
+        try:
+            with sqlite3.connect(self.db_path, uri=self.uri) as conn:
+                cursor = conn.cursor()
+                
+                # Check integrity
+                cursor.execute("PRAGMA integrity_check")
+                health_info["integrity"] = cursor.fetchone()[0]
+                
+                # Check table info
+                for table in ["query_analytics", "user_analytics", "system_metrics"]:
+                    cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                    row_count = cursor.fetchone()[0]
+                    cursor.execute("SELECT COUNT(name) FROM sqlite_master WHERE type='index' AND tbl_name=?", (table,))
+                    index_count = cursor.fetchone()[0]
+                    
+                    health_info["tables"][table] = {
+                        "row_count": row_count,
+                        "index_count": index_count
+                    }
+                    
+                # Check for fragmentation
+                cursor.execute("PRAGMA page_count")
+                page_count = cursor.fetchone()[0]
+                cursor.execute("PRAGMA page_size")
+                page_size = cursor.fetchone()[0]
+                health_info["database_size"] = (page_count * page_size) / (1024 * 1024)  # Size in MB
                 
         except Exception as e:
-            self.logger.error(f"Failed to initialize analytics database: {e}")
+            health_info["status"] = "unhealthy"
+            health_info["errors"].append(str(e))
+            self.logger.error(f"Database health check failed: {e}")
+            
+        return health_info
     
+    def check_database_health(self) -> Dict[str, Any]:
+        """Check if the database exists and is working properly"""
+        if not self.uri and self.db_path != ":memory:" and not os.path.exists(self.db_path):
+            return {
+                "status": "unhealthy",
+                "last_checked": datetime.now().isoformat(),
+                "database_path": self.db_path,
+                "tables": {},
+                "integrity": None,
+                "errors": [f"Database file not found at {self.db_path}"]
+            }
+        return self._verify_database_health()
+        
+    def check_api_keys(self) -> Dict[str, Any]:
+        """Check if Sarvam and Tavily API keys are working"""
+        api_status = {
+            "status": "healthy",
+            "last_checked": datetime.now().isoformat(),
+            "apis": {
+                "tavily": {"status": "unknown", "error": None},
+                "sarvam": {"status": "unknown", "error": None}
+            }
+        }
+        
+        # Check Tavily API
+        tavily_key = os.getenv("TAVILY_API_KEY")
+        if not tavily_key:
+            api_status["apis"]["tavily"] = {
+                "status": "error",
+                "error": "TAVILY_API_KEY not found in environment"
+            }
+        else:
+            try:
+                headers = {"Authorization": f"Bearer {tavily_key}"}
+                response = requests.get(
+                    "https://api.tavily.com/health",
+                    headers=headers,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    api_status["apis"]["tavily"] = {
+                        "status": "healthy",
+                        "error": None
+                    }
+                else:
+                    api_status["apis"]["tavily"] = {
+                        "status": "error",
+                        "error": f"API returned status code {response.status_code}"
+                    }
+            except Exception as e:
+                api_status["apis"]["tavily"] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        # Check Sarvam API
+        sarvam_key = os.getenv("SARVAM_API_KEY")
+        if not sarvam_key:
+            api_status["apis"]["sarvam"] = {
+                "status": "error",
+                "error": "SARVAM_API_KEY not found in environment"
+            }
+        else:
+            try:
+                headers = {
+                    "Authorization": f"Bearer {sarvam_key}",
+                    "Content-Type": "application/json"
+                }
+                # Simple health check query
+                data = {
+                    "messages": [{"role": "user", "content": "hello"}],
+                    "temperature": 0.1,
+                    "max_tokens": 10
+                }
+                response = requests.post(
+                    "https://proxy.aigenix.com/v1/chat/completions",
+                    headers=headers,
+                    json=data,
+                    timeout=5
+                )
+                if response.status_code == 200:
+                    api_status["apis"]["sarvam"] = {
+                        "status": "healthy",
+                        "error": None
+                    }
+                else:
+                    api_status["apis"]["sarvam"] = {
+                        "status": "error",
+                        "error": f"API returned status code {response.status_code}"
+                    }
+            except Exception as e:
+                api_status["apis"]["sarvam"] = {
+                    "status": "error",
+                    "error": str(e)
+                }
+        
+        # Update overall status
+        if any(api["status"] == "error" for api in api_status["apis"].values()):
+            api_status["status"] = "unhealthy"
+            
+        return api_status
+
+    # ...existing code...
+
     def log_query_analytics(self, query_id: str, user_id: str, query_text: str,
                           processing_time: float, success: bool, confidence: float = 0.8,
                           model_used: str = "sarvam-m", source_count: int = 10,

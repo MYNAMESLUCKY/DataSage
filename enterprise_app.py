@@ -2,9 +2,16 @@
 Enterprise RAG System with Authentication and Security
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import streamlit as st
 import sys
 import os
+import importlib
+
+import pysqlite3
+sys.modules["sqlite3"] = importlib.import_module("pysqlite3")
 
 # Add src to path
 sys.path.append('src')
